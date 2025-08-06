@@ -67,23 +67,40 @@ def checkoutAndPrepare(String agentLabel) {
     }
 }
 
-def setupEnvironmentCredentials(String credentialsId, Map additionalConfig = [:]) {
-    withCredentials([file(credentialsId: credentialsId, variable: 'SECRET_FILE')]) {
-        sh '''
-            # Copy base .env file
-            if [ -f "$SECRET_FILE" ]; then
-                cat "$SECRET_FILE" > .env
-            else
-                touch .env
-            fi
-        '''
+def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = null) {
+    dir(env.WORKSPACE) {
+        // Copy base .env file
+        withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
+            sh '''
+                if [ -f "$SECRET_FILE" ]; then
+                    cat "$SECRET_FILE" > .env
+                else
+                    touch .env
+                fi
+            '''
 
-        // Add additional configuration if provided
-        additionalConfig.each { key, value ->
-            sh """
-                echo "" >> .env
-                echo "${key}=${value}" >> .env
-            """
+            // Append additional config
+            additionalConfig.each { key, value ->
+                sh """
+                    echo "" >> .env
+                    echo "${key}=${value}" >> .env
+                """
+            }
+        }
+
+        // Optional Google Service Account key
+        if (gcpCredentialsId) {
+            withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
+                sh '''
+                    if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
+                        cat "$SERVICE_ACCOUNT_KEY" > key.json
+                        chmod 600 key.json
+                    else
+                        echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
+                        exit 1
+                    fi
+                '''
+            }
         }
     }
 }
