@@ -67,50 +67,43 @@ def checkoutAndPrepare(String agentLabel) {
     }
 }
 
-def setupEnvironmentCredentials(
-        String envCredentialsId,
-        Map additionalConfig = [:],
-        String gcpCredentialsId = "qa-google-service-account-key"
-) {
-    // Export extra config to Jenkins env
-    additionalConfig.each { key, value ->
-        env[key] = value
-    }
-
-    // Copy base .env
-    withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
-        sh '''
-            echo "📄 Copying base .env file..."
-            if [ -f "$SECRET_FILE" ]; then
-                cat "$SECRET_FILE" > .env
-            else
-                touch .env
-            fi
-            chmod 664 .env
-        '''
-    }
-
-    // Append extra config
-    additionalConfig.each { key, value ->
-        sh """
-            echo "" >> .env
-            echo "${key}=${value}" >> .env
-        """
-    }
-
-    // Optional: GCP key
-    if (gcpCredentialsId) {
-        withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
+def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = "qa-google-service-account-key") {
+    dir(env.WORKSPACE) {
+        // Copy main environment file
+        withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
             sh '''
-                echo "🔑 Setting up Google Service Account key..."
-                if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                    cat "$SERVICE_ACCOUNT_KEY" > key.json
-                    chmod 600 key.json
+                echo "📄 Copying base .env file..."
+                if [ -f "$SECRET_FILE" ]; then
+                    cat "$SECRET_FILE" > .env
                 else
-                    echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
-                    exit 1
+                    touch .env
                 fi
+                chmod 664 .env
             '''
+        }
+
+        // Append additional config values
+        additionalConfig.each { key, value ->
+            sh """
+                echo "" >> .env
+                echo "${key}=${value}" >> .env
+            """
+        }
+
+        // Optional: Google Service Account setup
+        if (gcpCredentialsId) {
+            withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
+                sh '''
+                    echo "🔑 Setting up Google Service Account key..."
+                    if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
+                        cat "$SERVICE_ACCOUNT_KEY" > key.json
+                        chmod 600 key.json
+                    else
+                        echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
+                        exit 1
+                    fi
+                '''
+            }
         }
     }
 }
