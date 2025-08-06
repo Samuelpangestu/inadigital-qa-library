@@ -72,40 +72,40 @@ def setupEnvironmentCredentials(
         Map additionalConfig = [:],
         String gcpCredentialsId = "qa-google-service-account-key"
 ) {
-    // Export additional config values to Jenkins env
+    // Export extra config to Jenkins env
     additionalConfig.each { key, value ->
         env[key] = value
     }
 
-    // Copy base .env file from credentials
+    // Copy base .env
     withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
         sh '''
             echo "📄 Copying base .env file..."
             if [ -f "$SECRET_FILE" ]; then
-                cat "$SECRET_FILE" > "$WORKSPACE/.env"
+                cat "$SECRET_FILE" > .env
             else
-                touch "$WORKSPACE/.env"
+                touch .env
             fi
-            chmod 664 "$WORKSPACE/.env"
+            chmod 664 .env
         '''
     }
 
-    // Append extra config values to .env
+    // Append extra config
     additionalConfig.each { key, value ->
         sh """
-            echo "" >> "$WORKSPACE/.env"
-            echo "${key}=${value}" >> "$WORKSPACE/.env"
+            echo "" >> .env
+            echo "${key}=${value}" >> .env
         """
     }
 
-    // Optional: setup Google Service Account key
+    // Optional: GCP key
     if (gcpCredentialsId) {
         withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
             sh '''
                 echo "🔑 Setting up Google Service Account key..."
                 if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                    cat "$SERVICE_ACCOUNT_KEY" > "$WORKSPACE/key.json"
-                    chmod 600 "$WORKSPACE/key.json"
+                    cat "$SERVICE_ACCOUNT_KEY" > key.json
+                    chmod 600 key.json
                 else
                     echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
                     exit 1
