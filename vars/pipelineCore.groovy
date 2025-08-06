@@ -70,21 +70,21 @@ def checkoutAndPrepare(String agentLabel) {
 def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = "qa-google-service-account-key") {
     // Copy main environment file
     withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
-        sh """
+        sh '''
             echo "📄 Copying base .env file..."
             if [ -f "$SECRET_FILE" ]; then
-                cp "$SECRET_FILE" "${WORKSPACE}/.env"
+                cat "$SECRET_FILE" > "$WORKSPACE/.env"
             else
-                touch "${WORKSPACE}/.env"
+                touch "$WORKSPACE/.env"
             fi
-            chmod 664 "${WORKSPACE}/.env"
-        """
+            chmod 664 "$WORKSPACE/.env"
+        '''
 
         // Append additional config values
         additionalConfig.each { key, value ->
             sh """
-                echo "" >> "${WORKSPACE}/.env"
-                echo "${key}=${value}" >> "${WORKSPACE}/.env"
+                echo "" >> "$WORKSPACE/.env"
+                echo "${key}=${value}" >> "$WORKSPACE/.env"
             """
         }
     }
@@ -92,16 +92,16 @@ def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = 
     // Optional: Google Service Account setup
     if (gcpCredentialsId) {
         withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
-            sh """
+            sh '''
                 echo "🔑 Setting up Google Service Account key..."
                 if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                    cp "$SERVICE_ACCOUNT_KEY" "${WORKSPACE}/key.json"
-                    chmod 600 "${WORKSPACE}/key.json"
+                    cat "$SERVICE_ACCOUNT_KEY" > "$WORKSPACE/key.json"
+                    chmod 600 "$WORKSPACE/key.json"
                 else
                     echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
                     exit 1
                 fi
-            """
+            '''
         }
     }
 }
