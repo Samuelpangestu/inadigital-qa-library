@@ -15,7 +15,7 @@ def setupBuildMetadata(def env, def params, def commitId, String testType) {
     env.BUILD_PATH = buildPath
 
     // Set display names based on test type
-    switch(testType.toLowerCase()) {
+    switch (testType.toLowerCase()) {
         case 'api':
             setupApiDisplayName(params, env)
             break
@@ -67,30 +67,36 @@ def checkoutAndPrepare(String agentLabel) {
     }
 }
 
-def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = null) {
+def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = "qa-google-service-account-key") {
+    // Copy main environment file
     withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
         sh """
+            echo "📄 Copying base .env file..."
             if [ -f "$SECRET_FILE" ]; then
-                cat "$SECRET_FILE" > ${WORKSPACE}/.env
+                cp "$SECRET_FILE" "${WORKSPACE}/.env"
             else
-                touch ${WORKSPACE}/.env
+                touch "${WORKSPACE}/.env"
             fi
+            chmod 664 "${WORKSPACE}/.env"
         """
 
+        // Append additional config values
         additionalConfig.each { key, value ->
             sh """
-                echo "" >> ${WORKSPACE}/.env
-                echo "${key}=${value}" >> ${WORKSPACE}/.env
+                echo "" >> "${WORKSPACE}/.env"
+                echo "${key}=${value}" >> "${WORKSPACE}/.env"
             """
         }
     }
 
+    // Optional: Google Service Account setup
     if (gcpCredentialsId) {
         withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
             sh """
+                echo "🔑 Setting up Google Service Account key..."
                 if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                    cat "$SERVICE_ACCOUNT_KEY" > ${WORKSPACE}/key.json
-                    chmod 600 ${WORKSPACE}/key.json
+                    cp "$SERVICE_ACCOUNT_KEY" "${WORKSPACE}/key.json"
+                    chmod 600 "${WORKSPACE}/key.json"
                 else
                     echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
                     exit 1
@@ -167,7 +173,7 @@ def executeWebTests(def params, String tagToUse, String nodePath, String pnpmPat
 // =============================================================================
 
 def generateTestReport(String testType, def additionalParams = [:]) {
-    switch(testType.toLowerCase()) {
+    switch (testType.toLowerCase()) {
         case 'api':
             return generateApiReport(additionalParams)
         case 'web':
@@ -243,7 +249,7 @@ def generateMobileReport(def params) {
 
 def sendTestNotification(String testType, String buildResult, String reportUrl, String commitId, def env, def params) {
     try {
-        switch(testType.toLowerCase()) {
+        switch (testType.toLowerCase()) {
             case 'api':
                 notificationUtils.sendGoogleChatNotification(buildResult, reportUrl, commitId, env, params)
                 break
@@ -264,7 +270,7 @@ def sendTestNotification(String testType, String buildResult, String reportUrl, 
 // =============================================================================
 
 def buildBrowserConfig(String browser) {
-    switch(browser) {
+    switch (browser) {
         case 'chromium':
             return '--project=chromium'
         case 'firefox':
