@@ -67,8 +67,17 @@ def checkoutAndPrepare(String agentLabel) {
     }
 }
 
-def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = "qa-google-service-account-key") {
-    // Copy main environment file
+def setupEnvironmentCredentials(
+        String envCredentialsId,
+        Map additionalConfig = [:],
+        String gcpCredentialsId = "qa-google-service-account-key"
+) {
+    // Export additional config values to Jenkins env
+    additionalConfig.each { key, value ->
+        env[key] = value
+    }
+
+    // Copy base .env file from credentials
     withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
         sh '''
             echo "📄 Copying base .env file..."
@@ -79,17 +88,17 @@ def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = 
             fi
             chmod 664 "$WORKSPACE/.env"
         '''
-
-        // Append additional config values
-        additionalConfig.each { key, value ->
-            sh """
-                echo "" >> "$WORKSPACE/.env"
-                echo "${key}=${value}" >> "$WORKSPACE/.env"
-            """
-        }
     }
 
-    // Optional: Google Service Account setup
+    // Append extra config values to .env
+    additionalConfig.each { key, value ->
+        sh """
+            echo "" >> "$WORKSPACE/.env"
+            echo "${key}=${value}" >> "$WORKSPACE/.env"
+        """
+    }
+
+    // Optional: setup Google Service Account key
     if (gcpCredentialsId) {
         withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
             sh '''
