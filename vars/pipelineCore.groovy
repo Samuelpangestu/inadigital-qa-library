@@ -68,39 +68,34 @@ def checkoutAndPrepare(String agentLabel) {
 }
 
 def setupEnvironmentCredentials(String envCredentialsId, Map additionalConfig = [:], String gcpCredentialsId = null) {
-    dir(env.WORKSPACE) {
-        // Copy base .env file
-        withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
-            sh '''
-                if [ -f "$SECRET_FILE" ]; then
-                    cat "$SECRET_FILE" > .env
-                else
-                    touch .env
-                fi
-            '''
+    withCredentials([file(credentialsId: envCredentialsId, variable: 'SECRET_FILE')]) {
+        sh """
+            if [ -f "$SECRET_FILE" ]; then
+                cat "$SECRET_FILE" > ${WORKSPACE}/.env
+            else
+                touch ${WORKSPACE}/.env
+            fi
+        """
 
-            // Append additional config
-            additionalConfig.each { key, value ->
-                sh """
-                    echo "" >> .env
-                    echo "${key}=${value}" >> .env
-                """
-            }
+        additionalConfig.each { key, value ->
+            sh """
+                echo "" >> ${WORKSPACE}/.env
+                echo "${key}=${value}" >> ${WORKSPACE}/.env
+            """
         }
+    }
 
-        // Optional Google Service Account key
-        if (gcpCredentialsId) {
-            withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
-                sh '''
-                    if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                        cat "$SERVICE_ACCOUNT_KEY" > key.json
-                        chmod 600 key.json
-                    else
-                        echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
-                        exit 1
-                    fi
-                '''
-            }
+    if (gcpCredentialsId) {
+        withCredentials([file(credentialsId: gcpCredentialsId, variable: 'SERVICE_ACCOUNT_KEY')]) {
+            sh """
+                if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
+                    cat "$SERVICE_ACCOUNT_KEY" > ${WORKSPACE}/key.json
+                    chmod 600 ${WORKSPACE}/key.json
+                else
+                    echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
+                    exit 1
+                fi
+            """
         }
     }
 }
