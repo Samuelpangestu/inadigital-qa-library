@@ -1,371 +1,491 @@
 #!/usr/bin/env groovy
 
 /**
- * Enhanced Notification Utilities
+ * Enhanced Notification Utilities - Refactored for Better Readability
  * Centralized notification management for API, Web, and Mobile test results
+ *
+ * @author Test Automation Team
+ * @version 2.0
  */
 
 // =============================================================================
-// COMMON UTILITIES
+// CONFIGURATION CONSTANTS
 // =============================================================================
 
-def getStatusEmoji(String status) {
-    switch (status) {
-        case "SUCCESS":
-            return "🟢"
-        case "UNSTABLE":
-            return "🟠"
-        case "FAILURE":
-            return "🔴"
-        default:
-            return "⚪"
-    }
-}
+final class NotificationConfig {
+    static final Map<String, String> SERVICE_WEBHOOK_MAPPING = [
+            // INAGov Services
+            'inagov': 'INAGOV_WEBHOOK_URL',
+            'personal-data': 'INAGOV_WEBHOOK_URL',
+            'aparatur': 'INAGOV_WEBHOOK_URL',
+            'pembelajaran': 'INAGOV_WEBHOOK_URL',
+            'dashbor': 'INAGOV_WEBHOOK_URL',
 
-def calculateSuccessRate(def testStats) {
-    return testStats.total > 0 ? (testStats.passed * 100 / testStats.total).intValue() : 100
-}
+            // INAPas Services
+            'inapas': 'INAPAS_WEBHOOK_URL',
 
-def createProgressBar(int successRate) {
-    def progressBar = ""
-    def barLength = 10
-    def filledBars = (successRate * barLength / 100).intValue()
+            // INAKu Services
+            'inaku': 'INAKU_WEBHOOK_URL',
 
-    for (int i = 0; i < barLength; i++) {
-        progressBar += (i < filledBars) ? "🟩" : "⬜"
-    }
+            // MBG Services
+            'mbg': 'MBG_WEBHOOK_URL',
 
-    return progressBar
-}
+            // SBU Services
+            'sbu': 'SBU_WEBHOOK_URL',
+            'digidoc': 'SBU_WEBHOOK_URL',
+            'emeterai': 'SBU_WEBHOOK_URL',
+            'meterai': 'SBU_WEBHOOK_URL',
+            'metel': 'SBU_WEBHOOK_URL',
 
-def getBuildDuration(def env) {
-    try {
-        def buildDuration = currentBuild.durationString.replace(" and counting", "")
-        return "⏱️ *Duration:* ${buildDuration}\\n"
-    } catch (Exception e) {
-        return ""
-    }
-}
-
-def getWebhookUrl(String productName) {
-    def tag = productName.toLowerCase().replaceAll('@', '')
-
-    // INAGOV services
-    def inagovServices = ['inagov', 'personal-data', 'aparatur', 'pembelajaran', 'dashbor']
-    if (inagovServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "INAGOV_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // INAPAS services
-    def inapasServices = ['inapas']
-    if (inapasServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "INAPAS_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // INAKU services
-    def inakuServices = ['inaku']
-    if (inakuServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "INAKU_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // MBG services
-    def mbgServices = ['mbg']
-    if (mbgServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "MBG_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // SBU services
-    def sbuServices = ['sbu', 'digidoc', 'emeterai', 'meterai', 'metel']
-    if (sbuServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "SBU_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // Peruri ID services
-    def peruriServices = ['peruriid', 'wizard']
-    if (peruriServices.any { tag.contains(it) }) {
-        return sh(script: 'grep "PERURIID_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-    }
-
-    // Default webhook
-    return sh(script: 'grep "GENERAL_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
-}
-
-def sendChatMessage(String webhookUrl, String message) {
-    def jsonPayload = """{"text": "${message}"}"""
-    writeFile file: 'chat_payload.json', text: jsonPayload
-
-    sh """
-        curl -s -X POST \\
-             -H 'Content-Type: application/json' \\
-             --data @chat_payload.json \\
-             '${webhookUrl}'
-    """
-}
-
-// =============================================================================
-// UNIFIED NOTIFICATION DISPATCHER
-// =============================================================================
-
-def sendTestNotification(String testType, String buildStatus, String reportUrl, String commitId, def env, def params) {
-    switch(testType.toLowerCase()) {
-        case 'api':
-            sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
-            break
-        case 'web':
-            sendWebTestNotification(buildStatus, reportUrl, commitId, env, params)
-            break
-        case 'mobile':
-            sendMobileTestNotification(buildStatus, reportUrl, commitId, env, params)
-            break
-        default:
-            echo "⚠️ Unknown test type: ${testType}"
-    }
-}
-
-// =============================================================================
-// API TEST NOTIFICATIONS (Allure-based)
-// =============================================================================
-
-def sendApiTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    sendGoogleChatNotification(buildStatus, reportUrl, commitId, env, params)
-}
-
-def sendGoogleChatNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def jobName = env.JOB_NAME.split('/')[-1]
-    def status = buildStatus ?: 'SUCCESS'
-    def statusEmoji = getStatusEmoji(status)
-    def productName = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
-
-    def webhookUrl = getWebhookUrl(productName)
-    echo "📡 Using webhook for API tests: ${productName}"
-
-    def testStats = getApiTestStatistics(env)
-    def successRate = calculateSuccessRate(testStats)
-    def progressBar = createProgressBar(successRate)
-    def executionTime = getBuildDuration(env)
-    def currentTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone('Asia/Jakarta'))
-
-    def formattedMessage = createApiNotificationMessage(
-            statusEmoji, status, env, params, commitId, jobName,
-            currentTime, executionTime, testStats, successRate,
-            progressBar, reportUrl
-    )
-
-    sendChatMessage(webhookUrl, formattedMessage)
-}
-
-def getApiTestStatistics(def env) {
-    return [
-            total  : env.LOCAL_TEST_COUNT ? env.LOCAL_TEST_COUNT.toInteger() : 0,
-            passed : env.PASSED_COUNT ? env.PASSED_COUNT.toInteger() : 0,
-            failed : env.FAILED_COUNT ? env.FAILED_COUNT.toInteger() : 0,
-            broken : env.BROKEN_COUNT ? env.BROKEN_COUNT.toInteger() : 0,
-            skipped: env.SKIPPED_COUNT ? env.SKIPPED_COUNT.toInteger() : 0
+            // PeruriID Services
+            'peruriid': 'PERURIID_WEBHOOK_URL',
+            'wizard': 'PERURIID_WEBHOOK_URL'
     ]
+
+    static final String DEFAULT_WEBHOOK = 'GENERAL_WEBHOOK_URL'
+    static final String TIMEZONE = 'Asia/Jakarta'
+    static final int PROGRESS_BAR_LENGTH = 10
 }
 
-def createApiNotificationMessage(statusEmoji, status, env, params, commitId, jobName, currentTime, executionTime, testStats, successRate, progressBar, reportUrl) {
-    def header = "*API TEST AUTOMATION REPORT*\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+// =============================================================================
+// CORE UTILITY FUNCTIONS
+// =============================================================================
 
-    def buildInfo = "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
-            "🔄 *Commit ID:* ${commitId}\\n" +
-            "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
-            "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
-            "🔧 *Service:* ${params.QA_SERVICE_NAME ?: params.QA_SERVICE}\\n" +
-            "📋 *Job:* ${jobName}\\n" +
-            "🕒 *Time:* ${currentTime}\\n" +
-            executionTime +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+class NotificationFormatter {
 
-    def testSummary = "📊 *TEST RESULTS* | ${successRate}% Success\\n" +
-            "${progressBar}\\n\\n" +
-            "🔢 *Total Tests:* ${testStats.total}\\n" +
-            "✅ *Passed:* ${testStats.passed}\\n" +
-            "❌ *Failed:* ${testStats.failed}\\n" +
-            "⚠️ *Broken:* ${testStats.broken}\\n" +
-            "⏭️ *Skipped:* ${testStats.skipped}\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    static String getStatusEmoji(String status) {
+        switch (status?.toUpperCase()) {
+            case "SUCCESS": return "🟢"
+            case "UNSTABLE": return "🟠"
+            case "FAILURE": return "🔴"
+            default: return "⚪"
+        }
+    }
 
-    def featureStats = createFeatureStatsSection(env)
+    static int calculateSuccessRate(Map testStats) {
+        def total = testStats.total ?: 0
+        def passed = testStats.passed ?: 0
+        return total > 0 ? (passed * 100 / total).intValue() : 100
+    }
 
-    def footer = "📄 *View Full Report:*\\n" +
-            "[${params.QA_SERVICE_NAME ?: params.QA_SERVICE} Allure Report](${reportUrl})\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    static String createProgressBar(int successRate) {
+        def progressBar = new StringBuilder()
+        def filledBars = (successRate * NotificationConfig.PROGRESS_BAR_LENGTH / 100).intValue()
 
-    return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${featureStats ? featureStats + '\\n\\n' : ''}${footer}"
-}
-
-def createFeatureStatsSection(def env) {
-    if (!env.GROUPED_SUITE_STATS) return ""
-
-    def featureStatsSection = "📑 *FEATURE RESULTS*\\n"
-    def groupedStats = readJSON text: env.GROUPED_SUITE_STATS
-
-    groupedStats.keySet().sort().each { suiteName ->
-        def tests = groupedStats[suiteName]
-        def featureTotal = 0
-        def featurePassed = 0
-
-        tests.keySet().each { testName ->
-            def stats = tests[testName]
-            featureTotal += stats.total
-            featurePassed += stats.passed
+        for (int i = 0; i < NotificationConfig.PROGRESS_BAR_LENGTH; i++) {
+            progressBar.append(i < filledBars ? "🟩" : "⬜")
         }
 
-        def featureSuccessRate = featureTotal > 0 ? (featurePassed * 100 / featureTotal).intValue() : 100
-        def featureEmoji = getFeatureEmoji(featureSuccessRate)
-
-        featureStatsSection += "${featureEmoji} *${suiteName}:* ${featureSuccessRate}% (${featurePassed}/${featureTotal})\\n"
+        return progressBar.toString()
     }
 
-    return featureStatsSection + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
-
-def getFeatureEmoji(int successRate) {
-    if (successRate == 100) return "✅"
-    if (successRate >= 80) return "🟡"
-    return "❌"
-}
-
-// =============================================================================
-// WEB TEST NOTIFICATIONS (Playwright-based)
-// =============================================================================
-
-def sendWebTestNotification(String buildStatus, String playwrightReportUrl, String commitId, def env, def params) {
-    def jobName = env.JOB_NAME.split('/')[-1]
-    def status = buildStatus ?: 'SUCCESS'
-    def statusEmoji = getStatusEmoji(status)
-    def productName = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
-
-    def webhookUrl = getWebhookUrl(productName)
-    echo "📡 Using webhook for web tests: ${productName}"
-
-    def testStats = getWebTestStatistics(env)
-    def successRate = calculateSuccessRate(testStats)
-    def progressBar = createProgressBar(successRate)
-    def executionTime = getBuildDuration(env)
-    def currentTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone('Asia/Jakarta'))
-
-    def formattedMessage = createWebNotificationMessage(
-            statusEmoji, status, env, params, commitId, jobName,
-            currentTime, executionTime, testStats, successRate,
-            progressBar, playwrightReportUrl
-    )
-
-    sendChatMessage(webhookUrl, formattedMessage)
-}
-
-def getWebTestStatistics(def env) {
-    return [
-            total  : env.TEST_TOTAL ? env.TEST_TOTAL.toInteger() : 0,
-            passed : env.TEST_PASSED ? env.TEST_PASSED.toInteger() : 0,
-            failed : env.TEST_FAILED ? env.TEST_FAILED.toInteger() : 0,
-            skipped: env.TEST_SKIPPED ? env.TEST_SKIPPED.toInteger() : 0,
-            flaky  : env.TEST_FLAKY ? env.TEST_FLAKY.toInteger() : 0
-    ]
-}
-
-def createWebNotificationMessage(statusEmoji, status, env, params, commitId, jobName, currentTime, executionTime, testStats, successRate, progressBar, playwrightReportUrl) {
-    def header = "*WEB TEST AUTOMATION REPORT*\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    def buildInfo = "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
-            "🔄 *Commit ID:* ${commitId}\\n" +
-            "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
-            "🏷️ *Service:* ${params.QA_SERVICE}\\n" +
-            "🔧 *Browser:* ${params.BROWSER}\\n" +
-            "👤 *Headless:* ${params.HEADLESS}\\n" +
-            "📋 *Job:* ${jobName}\\n" +
-            "🕒 *Time:* ${currentTime}\\n" +
-            executionTime +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    def testSummary = "📊 *WEB TEST RESULTS* | ${successRate}% Success\\n" +
-            "${progressBar}\\n\\n" +
-            "🔢 *Total Tests:* ${testStats.total}\\n" +
-            "✅ *Passed:* ${testStats.passed}\\n" +
-            "❌ *Failed:* ${testStats.failed}\\n" +
-            "⏭️ *Skipped:* ${testStats.skipped}\\n"
-
-    // Only add flaky count if there are flaky tests
-    if (testStats.flaky > 0) {
-        testSummary += "🔀 *Flaky:* ${testStats.flaky}\\n"
+    static String formatCurrentTime() {
+        return new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone(NotificationConfig.TIMEZONE))
     }
 
-    testSummary += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    static String formatBuildDuration(def currentBuild) {
+        try {
+            def buildDuration = currentBuild.durationString.replace(" and counting", "")
+            return "⏱️ *Duration:* ${buildDuration}\\n"
+        } catch (Exception e) {
+            return ""
+        }
+    }
+}
 
-    def footer = "📄 *View Test Reports:*\\n" +
-            "[🎭 Playwright Report](${playwrightReportUrl})\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+class WebhookManager {
 
-    return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${footer}"
+    def getWebhookUrl(String productName, def sh) {
+        def normalizedTag = productName.toLowerCase().replaceAll('@', '')
+
+        def webhookKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
+            normalizedTag.contains(service)
+        }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
+
+        return sh(script: "grep \"${webhookKey}\" .env | cut -d= -f2-", returnStdout: true).trim()
+    }
+
+    def sendMessage(String webhookUrl, String message, def writeFile, def sh) {
+        def jsonPayload = """{"text": "${message}"}"""
+        writeFile file: 'chat_payload.json', text: jsonPayload
+
+        sh """
+            curl -s -X POST \\
+                 -H 'Content-Type: application/json' \\
+                 --data @chat_payload.json \\
+                 '${webhookUrl}'
+        """
+    }
 }
 
 // =============================================================================
-// MOBILE TEST NOTIFICATIONS
+// TEST STATISTICS COLLECTORS
 // =============================================================================
+
+class TestStatisticsCollector {
+
+    static Map getApiTestStatistics(def env) {
+        return [
+                total  : env.LOCAL_TEST_COUNT?.toInteger() ?: 0,
+                passed : env.PASSED_COUNT?.toInteger() ?: 0,
+                failed : env.FAILED_COUNT?.toInteger() ?: 0,
+                broken : env.BROKEN_COUNT?.toInteger() ?: 0,
+                skipped: env.SKIPPED_COUNT?.toInteger() ?: 0
+        ]
+    }
+
+    static Map getWebTestStatistics(def env) {
+        return [
+                total  : env.TEST_TOTAL?.toInteger() ?: 0,
+                passed : env.TEST_PASSED?.toInteger() ?: 0,
+                failed : env.TEST_FAILED?.toInteger() ?: 0,
+                skipped: env.TEST_SKIPPED?.toInteger() ?: 0,
+                flaky  : env.TEST_FLAKY?.toInteger() ?: 0
+        ]
+    }
+
+    static Map getMobileTestStatistics(def env) {
+        return [
+                total  : env.MOBILE_TEST_TOTAL?.toInteger() ?: 0,
+                passed : env.MOBILE_TEST_PASSED?.toInteger() ?: 0,
+                failed : env.MOBILE_TEST_FAILED?.toInteger() ?: 0,
+                skipped: env.MOBILE_TEST_SKIPPED?.toInteger() ?: 0
+        ]
+    }
+}
+
+// =============================================================================
+// MESSAGE BUILDERS - HEADERS
+// =============================================================================
+
+class MessageHeaderBuilder {
+
+    static String buildApiHeader() {
+        return "*🚀 API TEST AUTOMATION REPORT*\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildWebHeader() {
+        return "*🌐 WEB TEST AUTOMATION REPORT*\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildMobileHeader() {
+        return "*📱 MOBILE TEST AUTOMATION REPORT*\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+}
+
+class MessageBuildInfoBuilder {
+
+    static String buildApiBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
+                "🔄 *Commit ID:* ${commitId}\\n" +
+                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
+                "🔧 *Service:* ${params.QA_SERVICE_NAME ?: params.QA_SERVICE}\\n" +
+                "📋 *Job:* ${jobName}\\n" +
+                "🕒 *Time:* ${currentTime}\\n" +
+                executionTime +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildWebBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
+                "🔄 *Commit ID:* ${commitId}\\n" +
+                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
+                "🔧 *Browser:* ${params.BROWSER}\\n" +
+                "👤 *Headless:* ${params.HEADLESS}\\n" +
+                "📋 *Job:* ${jobName}\\n" +
+                "🕒 *Time:* ${currentTime}\\n" +
+                executionTime +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildMobileBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
+                "🔄 *Commit ID:* ${commitId}\\n" +
+                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
+                "📱 *Device:* ${params.DEVICE_TYPE ?: 'Default'}\\n" +
+                "📋 *Job:* ${jobName}\\n" +
+                "🕒 *Time:* ${currentTime}\\n" +
+                executionTime +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+}
+
+class MessageTestSummaryBuilder {
+
+    static String buildApiTestSummary(Map testStats, int successRate, String progressBar) {
+        return "📊 *TEST RESULTS* | ${successRate}% Success\\n" +
+                "${progressBar}\\n\\n" +
+                "🔢 *Total Tests:* ${testStats.total}\\n" +
+                "✅ *Passed:* ${testStats.passed}\\n" +
+                "❌ *Failed:* ${testStats.failed}\\n" +
+                "⚠️ *Broken:* ${testStats.broken}\\n" +
+                "⏭️ *Skipped:* ${testStats.skipped}\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildWebTestSummary(Map testStats, int successRate, String progressBar) {
+        def summary = "📊 *WEB TEST RESULTS* | ${successRate}% Success\\n" +
+                "${progressBar}\\n\\n" +
+                "🔢 *Total Tests:* ${testStats.total}\\n" +
+                "✅ *Passed:* ${testStats.passed}\\n" +
+                "❌ *Failed:* ${testStats.failed}\\n" +
+                "⏭️ *Skipped:* ${testStats.skipped}\\n"
+
+        if (testStats.flaky > 0) {
+            summary += "🔀 *Flaky:* ${testStats.flaky}\\n"
+        }
+
+        summary += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        return summary
+    }
+
+    static String buildMobileTestSummary(Map testStats, int successRate, String progressBar) {
+        return "📊 *MOBILE TEST RESULTS* | ${successRate}% Success\\n" +
+                "${progressBar}\\n\\n" +
+                "🔢 *Total Tests:* ${testStats.total}\\n" +
+                "✅ *Passed:* ${testStats.passed}\\n" +
+                "❌ *Failed:* ${testStats.failed}\\n" +
+                "⏭️ *Skipped:* ${testStats.skipped}\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+}
+
+class MessageFooterBuilder {
+
+    static String buildApiFooter(String reportUrl, def params) {
+        return "📄 *View Full Report:*\\n" +
+                "[${params.QA_SERVICE_NAME ?: params.QA_SERVICE} Allure Report](${reportUrl})\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildWebFooter(String reportUrl) {
+        return "📄 *View Test Reports:*\\n" +
+                "[🎭 Playwright Report](${reportUrl})\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    static String buildMobileFooter(String reportUrl) {
+        return "📄 *View Test Report:*\\n" +
+                "[📱 Mobile Test Report](${reportUrl})\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+}
+
+// =============================================================================
+// FEATURE STATISTICS HANDLER
+// =============================================================================
+
+class FeatureStatsHandler {
+
+    def createFeatureStatsSection(def env, def readJSON) {
+        if (!env.GROUPED_SUITE_STATS) return ""
+
+        def featureStatsSection = "📑 *FEATURE RESULTS*\\n"
+        def groupedStats = readJSON text: env.GROUPED_SUITE_STATS
+
+        groupedStats.keySet().sort().each { suiteName ->
+            def tests = groupedStats[suiteName]
+            def featureTotal = 0
+            def featurePassed = 0
+
+            tests.keySet().each { testName ->
+                def stats = tests[testName]
+                featureTotal += stats.total
+                featurePassed += stats.passed
+            }
+
+            def featureSuccessRate = featureTotal > 0 ? (featurePassed * 100 / featureTotal).intValue() : 100
+            def featureEmoji = getFeatureEmoji(featureSuccessRate)
+
+            featureStatsSection += "${featureEmoji} *${suiteName}:* ${featureSuccessRate}% (${featurePassed}/${featureTotal})\\n"
+        }
+
+        return featureStatsSection + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    private String getFeatureEmoji(int successRate) {
+        if (successRate == 100) return "✅"
+        if (successRate >= 80) return "🟡"
+        return "❌"
+    }
+}
+
+// =============================================================================
+// NOTIFICATION ORCHESTRATOR
+// =============================================================================
+
+class NotificationOrchestrator {
+
+    private WebhookManager webhookManager
+    private FeatureStatsHandler featureStatsHandler
+    private def currentBuild
+    private def env
+    private def echo
+    private def readJSON
+    private def sh
+    private def writeFile
+
+    NotificationOrchestrator(def currentBuild, def env, def echo, def readJSON, def sh, def writeFile) {
+        this.webhookManager = new WebhookManager()
+        this.featureStatsHandler = new FeatureStatsHandler()
+        this.currentBuild = currentBuild
+        this.env = env
+        this.echo = echo
+        this.readJSON = readJSON
+        this.sh = sh
+        this.writeFile = writeFile
+    }
+
+    def sendTestNotification(String testType, String buildStatus, String reportUrl, String commitId, def env, def params) {
+        switch(testType.toLowerCase()) {
+            case 'api':
+                sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
+                break
+            case 'web':
+                sendWebTestNotification(buildStatus, reportUrl, commitId, env, params)
+                break
+            case 'mobile':
+                sendMobileTestNotification(buildStatus, reportUrl, commitId, env, params)
+                break
+            default:
+                this.echo "⚠️ Unknown test type: ${testType}"
+        }
+    }
+
+    def sendApiTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+        def context = buildNotificationContext(buildStatus, commitId, env, params)
+        def testStats = TestStatisticsCollector.getApiTestStatistics(env)
+        def metrics = calculateMetrics(testStats)
+
+        def message = buildApiMessage(context, testStats, metrics, reportUrl, params)
+
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, this.sh)
+        this.echo "📡 Sending API notification for: ${context.productName}"
+
+        webhookManager.sendMessage(webhookUrl, message, this.writeFile, this.sh)
+    }
+
+    def sendWebTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+        def context = buildNotificationContext(buildStatus, commitId, env, params)
+        def testStats = TestStatisticsCollector.getWebTestStatistics(env)
+        def metrics = calculateMetrics(testStats)
+
+        def message = buildWebMessage(context, testStats, metrics, reportUrl, params)
+
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, this.sh)
+        this.echo "📡 Sending Web notification for: ${context.productName}"
+
+        webhookManager.sendMessage(webhookUrl, message, this.writeFile, this.sh)
+    }
+
+    def sendMobileTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+        def context = buildNotificationContext(buildStatus, commitId, env, params)
+        def testStats = TestStatisticsCollector.getMobileTestStatistics(env)
+        def metrics = calculateMetrics(testStats)
+
+        def message = buildMobileMessage(context, testStats, metrics, reportUrl, params)
+
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, this.sh)
+        this.echo "📡 Sending Mobile notification for: ${context.productName}"
+
+        webhookManager.sendMessage(webhookUrl, message, this.writeFile, this.sh)
+    }
+
+    private Map buildNotificationContext(String buildStatus, String commitId, def env, def params) {
+        return [
+                jobName: env.JOB_NAME.split('/')[-1],
+                status: buildStatus ?: 'SUCCESS',
+                statusEmoji: NotificationFormatter.getStatusEmoji(buildStatus ?: 'SUCCESS'),
+                productName: env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE,
+                currentTime: NotificationFormatter.formatCurrentTime(),
+                executionTime: NotificationFormatter.formatBuildDuration(this.currentBuild),
+                commitId: commitId,
+                buildNumber: env.BUILD_NUMBER
+        ]
+    }
+
+    private Map calculateMetrics(Map testStats) {
+        def successRate = NotificationFormatter.calculateSuccessRate(testStats)
+        return [
+                successRate: successRate,
+                progressBar: NotificationFormatter.createProgressBar(successRate)
+        ]
+    }
+
+    private String buildApiMessage(Map context, Map testStats, Map metrics, String reportUrl, def params) {
+        def header = MessageHeaderBuilder.buildApiHeader()
+        def buildInfo = MessageBuildInfoBuilder.buildApiBuildInfo(
+                context.statusEmoji, context.status, this.env, params,
+                context.commitId, context.jobName, context.currentTime, context.executionTime
+        )
+        def testSummary = MessageTestSummaryBuilder.buildApiTestSummary(testStats, metrics.successRate, metrics.progressBar)
+        def featureStats = featureStatsHandler.createFeatureStatsSection(this.env, this.readJSON)
+        def footer = MessageFooterBuilder.buildApiFooter(reportUrl, params)
+
+        return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${featureStats ? featureStats + '\\n\\n' : ''}${footer}"
+    }
+
+    private String buildWebMessage(Map context, Map testStats, Map metrics, String reportUrl, def params) {
+        def header = MessageHeaderBuilder.buildWebHeader()
+        def buildInfo = MessageBuildInfoBuilder.buildWebBuildInfo(
+                context.statusEmoji, context.status, this.env, params,
+                context.commitId, context.jobName, context.currentTime, context.executionTime
+        )
+        def testSummary = MessageTestSummaryBuilder.buildWebTestSummary(testStats, metrics.successRate, metrics.progressBar)
+        def footer = MessageFooterBuilder.buildWebFooter(reportUrl)
+
+        return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${footer}"
+    }
+
+    private String buildMobileMessage(Map context, Map testStats, Map metrics, String reportUrl, def params) {
+        def header = MessageHeaderBuilder.buildMobileHeader()
+        def buildInfo = MessageBuildInfoBuilder.buildMobileBuildInfo(
+                context.statusEmoji, context.status, this.env, params,
+                context.commitId, context.jobName, context.currentTime, context.executionTime
+        )
+        def testSummary = MessageTestSummaryBuilder.buildMobileTestSummary(testStats, metrics.successRate, metrics.progressBar)
+        def footer = MessageFooterBuilder.buildMobileFooter(reportUrl)
+
+        return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${footer}"
+    }
+}
+
+// =============================================================================
+// PUBLIC API - BACKWARD COMPATIBILITY
+// =============================================================================
+
+// Unified notification dispatcher
+def sendTestNotification(String testType, String buildStatus, String reportUrl, String commitId, def env, def params) {
+    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    orchestrator.sendTestNotification(testType, buildStatus, reportUrl, commitId, env, params)
+}
+
+// Specific notification methods
+def sendApiTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    orchestrator.sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
+}
+
+def sendWebTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    orchestrator.sendWebTestNotification(buildStatus, reportUrl, commitId, env, params)
+}
 
 def sendMobileTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def jobName = env.JOB_NAME.split('/')[-1]
-    def status = buildStatus ?: 'SUCCESS'
-    def statusEmoji = getStatusEmoji(status)
-    def productName = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
-
-    def webhookUrl = getWebhookUrl(productName)
-    echo "📡 Using webhook for mobile tests: ${productName}"
-
-    def testStats = getMobileTestStatistics(env)
-    def successRate = calculateSuccessRate(testStats)
-    def progressBar = createProgressBar(successRate)
-    def executionTime = getBuildDuration(env)
-    def currentTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone('Asia/Jakarta'))
-
-    def formattedMessage = createMobileNotificationMessage(
-            statusEmoji, status, env, params, commitId, jobName,
-            currentTime, executionTime, testStats, successRate,
-            progressBar, reportUrl
-    )
-
-    sendChatMessage(webhookUrl, formattedMessage)
+    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    orchestrator.sendMobileTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
-def getMobileTestStatistics(def env) {
-    return [
-            total  : env.MOBILE_TEST_TOTAL ? env.MOBILE_TEST_TOTAL.toInteger() : 0,
-            passed : env.MOBILE_TEST_PASSED ? env.MOBILE_TEST_PASSED.toInteger() : 0,
-            failed : env.MOBILE_TEST_FAILED ? env.MOBILE_TEST_FAILED.toInteger() : 0,
-            skipped: env.MOBILE_TEST_SKIPPED ? env.MOBILE_TEST_SKIPPED.toInteger() : 0
-    ]
-}
-
-def createMobileNotificationMessage(statusEmoji, status, env, params, commitId, jobName, currentTime, executionTime, testStats, successRate, progressBar, reportUrl) {
-    def header = "*MOBILE TEST AUTOMATION REPORT*\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    def buildInfo = "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
-            "🔄 *Commit ID:* ${commitId}\\n" +
-            "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
-            "🏷️ *Service:* ${params.QA_SERVICE}\\n" +
-            "📱 *Device:* ${params.DEVICE_TYPE ?: 'Default'}\\n" +
-            "📋 *Job:* ${jobName}\\n" +
-            "🕒 *Time:* ${currentTime}\\n" +
-            executionTime +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    def testSummary = "📊 *MOBILE TEST RESULTS* | ${successRate}% Success\\n" +
-            "${progressBar}\\n\\n" +
-            "🔢 *Total Tests:* ${testStats.total}\\n" +
-            "✅ *Passed:* ${testStats.passed}\\n" +
-            "❌ *Failed:* ${testStats.failed}\\n" +
-            "⏭️ *Skipped:* ${testStats.skipped}\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    def footer = "📄 *View Test Report:*\\n" +
-            "[📱 Mobile Test Report](${reportUrl})\\n" +
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${footer}"
+// Legacy method alias
+def sendGoogleChatNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
+    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    orchestrator.sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
 return this
