@@ -107,14 +107,14 @@ class WebhookManager {
 
     def sendMessage(String webhookUrl, String message, def writeFile, def sh) {
         def jsonPayload = """{"text": "${message}"}"""
-        writeFile file: 'chat_payload.json', text: jsonPayload
+        writeFile(file: 'chat_payload.json', text: jsonPayload)
 
-        sh """
+        sh(script: """
             curl -s -X POST \\
                  -H 'Content-Type: application/json' \\
                  --data @chat_payload.json \\
                  '${webhookUrl}'
-        """
+        """)
     }
 }
 
@@ -287,7 +287,7 @@ class FeatureStatsHandler {
         if (!env.GROUPED_SUITE_STATS) return ""
 
         def featureStatsSection = "📑 *FEATURE RESULTS*\\n"
-        def groupedStats = readJSON text: env.GROUPED_SUITE_STATS
+        def groupedStats = readJSON(text: env.GROUPED_SUITE_STATS)
 
         groupedStats.keySet().sort().each { suiteName ->
             def tests = groupedStats[suiteName]
@@ -462,29 +462,64 @@ class NotificationOrchestrator {
 
 // Unified notification dispatcher
 def sendTestNotification(String testType, String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    def orchestrator = new NotificationOrchestrator(
+            currentBuild,
+            env,
+            { msg -> echo(msg) },
+            { args -> readJSON(args) },
+            { args -> sh(args) },
+            { args -> writeFile(args) }
+    )
     orchestrator.sendTestNotification(testType, buildStatus, reportUrl, commitId, env, params)
 }
 
 // Specific notification methods
 def sendApiTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    def orchestrator = new NotificationOrchestrator(
+            currentBuild,
+            env,
+            { msg -> echo(msg) },
+            { args -> readJSON(args) },
+            { args -> sh(args) },
+            { args -> writeFile(args) }
+    )
     orchestrator.sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
 def sendWebTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    def orchestrator = new NotificationOrchestrator(
+            currentBuild,
+            env,
+            { msg -> echo(msg) },
+            { args -> readJSON(args) },
+            { args -> sh(args) },
+            { args -> writeFile(args) }
+    )
     orchestrator.sendWebTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
 def sendMobileTestNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    def orchestrator = new NotificationOrchestrator(
+            currentBuild,
+            env,
+            { msg -> echo(msg) },
+            { args -> readJSON(args) },
+            { args -> sh(args) },
+            { args -> writeFile(args) }
+    )
     orchestrator.sendMobileTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
 // Legacy method alias
 def sendGoogleChatNotification(String buildStatus, String reportUrl, String commitId, def env, def params) {
-    def orchestrator = new NotificationOrchestrator(currentBuild, env, this.&echo, this.&readJSON, this.&sh, this.&writeFile)
+    def orchestrator = new NotificationOrchestrator(
+            currentBuild,
+            env,
+            { msg -> echo(msg) },
+            { args -> readJSON(args) },
+            { args -> sh(args) },
+            { args -> writeFile(args) }
+    )
     orchestrator.sendApiTestNotification(buildStatus, reportUrl, commitId, env, params)
 }
 
