@@ -50,6 +50,30 @@ def getBuildDuration(def env) {
 def getWebhookUrl(String productName) {
     def tag = productName.toLowerCase().replaceAll('@', '')
 
+    // INAGOV services
+    def inagovServices = ['inagov', 'personal-data', 'aparatur', 'pembelajaran', 'dashbor']
+    if (inagovServices.any { tag.contains(it) }) {
+        return sh(script: 'grep "INAGOV_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
+    }
+
+    // INAPAS services
+    def inapasServices = ['inapas']
+    if (inapasServices.any { tag.contains(it) }) {
+        return sh(script: 'grep "INAPAS_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
+    }
+
+    // INAKU services
+    def inakuServices = ['inaku']
+    if (inakuServices.any { tag.contains(it) }) {
+        return sh(script: 'grep "INAKU_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
+    }
+
+    // MBG services
+    def mbgServices = ['mbg']
+    if (mbgServices.any { tag.contains(it) }) {
+        return sh(script: 'grep "MBG_WEBHOOK_URL" .env | cut -d= -f2-', returnStdout: true).trim()
+    }
+
     // SBU services
     def sbuServices = ['sbu', 'digidoc', 'emeterai', 'meterai', 'metel']
     if (sbuServices.any { tag.contains(it) }) {
