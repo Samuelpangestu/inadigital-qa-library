@@ -1,38 +1,34 @@
 #!/usr/bin/env groovy
 
 /**
- * Report Management Utilities
- * Fixed version with proper path sanitization for Allure history
+ * Report Management Utilities - Simple Fix for Allure History
  */
 
 // =============================================================================
-// ALLURE REPORT MANAGEMENT (API TESTS) - FIXED VERSION
+// ALLURE REPORT MANAGEMENT - SIMPLE FIX
 // =============================================================================
 
 def prepareAllureHistory(String persistentHistoryDir) {
-    // Sanitize the directory path to handle spaces and special characters
-    def sanitizedDir = sanitizePath(persistentHistoryDir)
+    // Auto-sanitize the path internally
+    def cleanDir = sanitizeHistoryPath(persistentHistoryDir)
 
     sh """
         echo "📊 Preparing history files for Allure report"
-        echo "🗂️ Original path: ${persistentHistoryDir}"
-        echo "🔧 Sanitized path: ${sanitizedDir}"
-        
         mkdir -p target/allure-results/history
 
-        if [ -d "${sanitizedDir}" ] && [ "\$(ls -la '${sanitizedDir}' 2>/dev/null | wc -l)" -gt "3" ]; then
-            echo "📋 Copying history from persistent location to target directory"
-            cp -f '${sanitizedDir}'/* target/allure-results/history/ 2>/dev/null || true
-            echo "✅ History files copied successfully"
+        if [ -d '${cleanDir}' ] && [ "\$(ls -la '${cleanDir}' 2>/dev/null | wc -l)" -gt "3" ]; then
+            echo "📋 Copying history from: ${cleanDir}"
+            cp -f '${cleanDir}'/* target/allure-results/history/ 2>/dev/null || true
+            echo "✅ History files copied"
         else
-            echo "ℹ️ No existing history found at: ${sanitizedDir}"
+            echo "ℹ️ No existing history found"
         fi
     """
 }
 
 def generateAllureReport(String persistentHistoryDir, String allureCommandPath) {
-    // Sanitize the directory path to handle spaces and special characters
-    def sanitizedDir = sanitizePath(persistentHistoryDir)
+    // Auto-sanitize the path internally
+    def cleanDir = sanitizeHistoryPath(persistentHistoryDir)
 
     sh """
         export PATH="${allureCommandPath}:\$PATH"
@@ -40,61 +36,35 @@ def generateAllureReport(String persistentHistoryDir, String allureCommandPath) 
         allure generate target/allure-results -o allure-report --clean
 
         if [ -d "allure-report/history" ]; then
-            echo "💾 Saving history to persistent location: ${sanitizedDir}"
-            mkdir -p '${sanitizedDir}'
-            cp -f allure-report/history/* '${sanitizedDir}'/ 2>/dev/null || true
-            echo "✅ History saved successfully"
-        else
-            echo "⚠️ No history directory found in generated report"
+            echo "💾 Saving history to: ${cleanDir}"
+            mkdir -p '${cleanDir}'
+            cp -f allure-report/history/* '${cleanDir}'/ 2>/dev/null || true
+            echo "✅ History saved"
         fi
     """
 }
 
 /**
- * Sanitize path to handle spaces and special characters
- * This ensures proper shell command execution
+ * Simple path sanitization - handles spaces and special characters
  */
-def sanitizePath(String originalPath) {
-    // Extract the base directory and tag from the path
-    def basePath = "/var/lib/jenkins/allure-history"
-
-    // Extract tag from the path (everything after the last slash)
+private def sanitizeHistoryPath(String originalPath) {
+    // Extract tag from path
     def tag = originalPath.substring(originalPath.lastIndexOf('/') + 1)
 
-    // Sanitize the tag name for filesystem safety
-    def sanitizedTag = tag.toLowerCase()
-            .replaceAll("@", "")
-            .replaceAll("\\s+(and|or|not)\\s+", "-")
-            .replaceAll("[^a-z0-9\\-_]", "-")
-            .replaceAll("-+", "-")
-            .replaceAll("^-|-\$", "")
+    // Clean the tag
+    def cleanTag = tag.toLowerCase()
+            .replaceAll('@', '')
+            .replaceAll('\\s+', '-')
+            .replaceAll('[^a-z0-9\\-_]', '-')
+            .replaceAll('-+', '-')
+            .replaceAll('^-|-$', '')
 
-    def sanitizedPath = "${basePath}/${sanitizedTag}"
-
-    echo "🔧 Path sanitization: '${originalPath}' -> '${sanitizedPath}'"
-    return sanitizedPath
+    // Return clean path
+    return "/var/lib/jenkins/allure-history/${cleanTag}"
 }
 
 // =============================================================================
-// ALLURE REPORT URL GENERATION
-// =============================================================================
-
-def generateAllureReportUrl(String baseUrl, String serviceForUrl, String serviceNameForUrl, String buildPath) {
-    def sanitizedTag = sanitizeServiceName(serviceForUrl)
-    return "${baseUrl}/${sanitizedTag}/${serviceNameForUrl}/${buildPath}/index.html"
-}
-
-def sanitizeServiceName(String serviceName) {
-    return serviceName.toLowerCase()
-            .replaceAll("@", "")
-            .replaceAll("\\s+(and|or|not)\\s+", "-")
-            .replaceAll("[^a-z0-9\\-_]", "-")
-            .replaceAll("-+", "-")
-            .replaceAll("^-|-\$", "")
-}
-
-// =============================================================================
-// PLAYWRIGHT REPORT MANAGEMENT (WEB TESTS)
+// REST OF THE FILE REMAINS THE SAME
 // =============================================================================
 
 def collectPlaywrightStatistics() {
@@ -220,10 +190,6 @@ def collectPlaywrightStatisticsFromHTML() {
     }
 }
 
-// =============================================================================
-// API TEST STATISTICS (ALLURE BASED)
-// =============================================================================
-
 def collectAllureStatistics() {
     def stats = [total: 0, passed: 0, failed: 0, broken: 0, skipped: 0, groupedStats: [:]]
 
@@ -285,10 +251,6 @@ def collectAllureStatistics() {
     return stats
 }
 
-// =============================================================================
-// STATISTICS STORAGE
-// =============================================================================
-
 def storeApiStatistics(def stats, def env) {
     env.LOCAL_TEST_COUNT = stats.total.toString()
     env.PASSED_COUNT = stats.passed.toString()
@@ -312,7 +274,6 @@ def storeWebStatistics(def testStats, def env) {
 }
 
 def storeMobileStatistics(def testStats, def env) {
-    // Mobile statistics storage implementation
     env.MOBILE_TEST_TOTAL = testStats.total.toString()
     env.MOBILE_TEST_PASSED = testStats.passed.toString()
     env.MOBILE_TEST_FAILED = testStats.failed.toString()
@@ -320,10 +281,6 @@ def storeMobileStatistics(def testStats, def env) {
 
     echo "💾 Mobile test statistics stored in environment variables"
 }
-
-// =============================================================================
-// ARTIFACT ARCHIVAL
-// =============================================================================
 
 def archiveApiArtifacts() {
     archiveArtifacts artifacts: 'allure-report/**', allowEmptyArchive: true
@@ -343,35 +300,19 @@ def archiveWebArtifactsOnFailure() {
 }
 
 def archiveMobileArtifacts() {
-    // Mobile artifact archival implementation
     archiveArtifacts artifacts: 'mobile-reports/**', allowEmptyArchive: true
     archiveArtifacts artifacts: 'screenshots/**', allowEmptyArchive: true
 }
 
-// =============================================================================
-// REPORT URL GENERATION
-// =============================================================================
-
 def generateReportUrl(String baseUrl, String serviceForUrl, String serviceNameForUrl, String buildPath) {
-    def sanitizedTag = sanitizeServiceName(serviceForUrl)
+    def sanitizedTag = serviceForUrl.toLowerCase()
+            .replaceAll("@", "")
+            .replaceAll("\\s+(and|or|not)\\s+", "-")
+            .replaceAll("[^a-z0-9\\-_]", "-")
+            .replaceAll("-+", "-")
+            .replaceAll("^-|-\$", "")
+
     return "${baseUrl}/${sanitizedTag}/${serviceNameForUrl}/${buildPath}/index.html"
-}
-
-// =============================================================================
-// DEBUGGING HELPERS
-// =============================================================================
-
-def debugHistorySetup(String originalPath, String sanitizedPath) {
-    sh """
-        echo "🔍 Debug History Setup:"
-        echo "  Original path: ${originalPath}"
-        echo "  Sanitized path: ${sanitizedPath}"
-        echo "  History dir exists: \$(test -d '${sanitizedPath}' && echo 'YES' || echo 'NO')"
-        echo "  History dir contents:"
-        ls -la '${sanitizedPath}' 2>/dev/null || echo "    (directory does not exist)"
-        echo "  Target history dir:"
-        ls -la target/allure-results/history/ 2>/dev/null || echo "    (directory does not exist)"
-    """
 }
 
 return this
