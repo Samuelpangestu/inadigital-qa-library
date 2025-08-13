@@ -39,7 +39,10 @@ final class NotificationConfig {
 
             // PeruriID Services
             'peruriid': 'PERURIID_WEBHOOK_URL',
-            'wizard': 'PERURIID_WEBHOOK_URL'
+            'wizard': 'PERURIID_WEBHOOK_URL',
+
+            // Telkomsign Services
+            'telkomsign': 'TELKOMSIGN_WEBHOOK_URL'
     ]
 
     static final String DEFAULT_WEBHOOK = 'GENERAL_WEBHOOK_URL'

@@ -21,6 +21,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('mbg')) return 'mbg'
     if (jobNameLower.contains('peruriid')) return 'peruriid'
     if (jobNameLower.contains('wizard')) return 'wizard'
+    if (jobNameLower.contains('telkomsign')) return 'telkomsign'
 
     // Web-specific job patterns
     if (jobNameLower.contains('perisai-ultimate')) return 'perisai-ultimate'
@@ -92,6 +93,7 @@ def mapTagToSheets(String tagToUse) {
             'inagov'            : ['INAGOV'],
             'inapas'            : ['INAPAS'],
             'inaku'             : ['INAKU'],
+            'telkomsign'        : ['TELKOMSIGN'],
             // Multi-service tags
             'regression'        : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
             'positive'          : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
@@ -118,7 +120,7 @@ def mapTagToSheets(String tagToUse) {
     }
 
     // Fallback: return all sheets when no tag is found in the mapping
-    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'SBU_WEB']
+    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'SBU_WEB', 'TELKOMSIGN']
     echo "📋 Tag '${normalizedTag}' not found in mapping, using fallback sheets: ${fallbackSheets}"
     return fallbackSheets
 }
