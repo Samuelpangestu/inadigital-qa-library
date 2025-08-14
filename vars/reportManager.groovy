@@ -2,21 +2,21 @@
 
 /**
  * Report Management Utilities
- * Handles report generation, statistics collection, and artifact management
+ * Enhanced for Web Allure Integration with Playwright
  */
 
 // =============================================================================
-// ALLURE REPORT MANAGEMENT (API TESTS)
+// ALLURE REPORT MANAGEMENT (API & WEB TESTS)
 // =============================================================================
 
 def prepareAllureHistory(String persistentHistoryDir) {
     sh """
         echo "📊 Preparing history files for Allure report"
-        mkdir -p target/allure-results/history
+        mkdir -p allure-results/history
 
         if [ -d "${persistentHistoryDir}" ] && [ "\$(ls -la ${persistentHistoryDir} 2>/dev/null | wc -l)" -gt "3" ]; then
-            echo "📋 Copying history from persistent location to target directory"
-            cp -f ${persistentHistoryDir}/* target/allure-results/history/ 2>/dev/null || true
+            echo "📋 Copying history from persistent location to allure-results directory"
+            cp -f ${persistentHistoryDir}/* allure-results/history/ 2>/dev/null || true
         fi
     """
 }
@@ -25,7 +25,7 @@ def generateAllureReport(String persistentHistoryDir, String allureCommandPath) 
     sh """
         export PATH="${allureCommandPath}:$PATH"
         echo "🔄 Generating Allure report..."
-        allure generate target/allure-results -o allure-report --clean
+        allure generate allure-results -o allure-report --clean
 
         if [ -d "allure-report/history" ]; then
             echo "💾 Saving history to persistent location"
@@ -36,7 +36,93 @@ def generateAllureReport(String persistentHistoryDir, String allureCommandPath) 
 }
 
 // =============================================================================
-// PLAYWRIGHT REPORT MANAGEMENT (WEB TESTS)
+// WEB ALLURE REPORT MANAGEMENT (PLAYWRIGHT + ALLURE)
+// =============================================================================
+
+def prepareWebAllureResults() {
+    sh '''
+        echo "📊 Preparing Allure results directory for web tests"
+        mkdir -p allure-results
+        
+        # Copy Playwright artifacts to Allure format if they exist
+        if [ -d "test-results" ]; then
+            # Copy screenshots
+            find test-results -name "*.png" -exec cp {} allure-results/ \\; 2>/dev/null || true
+            # Copy videos  
+            find test-results -name "*.webm" -exec cp {} allure-results/ \\; 2>/dev/null || true
+            # Copy traces
+            find test-results -name "*.zip" -exec cp {} allure-results/ \\; 2>/dev/null || true
+            
+            echo "📎 Copied Playwright artifacts to Allure results"
+        fi
+    '''
+}
+
+def setupWebAllureEnvironment(def params, def env) {
+    def envContent = """
+Environment=${params.TARGET_ENV}
+Browser=${params.BROWSER}
+Headless=${params.HEADLESS}
+Tag=${env.EFFECTIVE_QA_SERVICE}
+Build=${env.BUILD_NUMBER}
+Branch=${env.GIT_BRANCH ?: 'main'}
+"""
+
+    writeFile file: 'allure-results/environment.properties', text: envContent
+    echo "🌍 Set Allure environment properties for web tests"
+}
+
+def addWebAllureCategories() {
+    def categoriesContent = '''[
+  {
+    "name": "Failed Tests",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "Broken Tests", 
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
+  },
+  {
+    "name": "Flaky Tests",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*retry.*"
+  },
+  {
+    "name": "UI Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(timeout|element not found|selector).*"
+  }
+]'''
+
+    writeFile file: 'allure-results/categories.json', text: categoriesContent
+    echo "📂 Added Allure categories for web tests"
+}
+
+// =============================================================================
+// COMBINED WEB REPORT GENERATION
+// =============================================================================
+
+def generateWebAllureReport(String persistentHistoryDir, String allureCommandPath, def params, def env) {
+    // Setup Allure environment for web tests
+    prepareWebAllureResults()
+    setupWebAllureEnvironment(params, env)
+    addWebAllureCategories()
+
+    // Generate combined report (Playwright + Allure)
+    prepareAllureHistory(persistentHistoryDir)
+    generateAllureReport(persistentHistoryDir, allureCommandPath)
+
+    echo "✅ Web Allure report generated with Playwright artifacts"
+}
+
+// =============================================================================
+// PLAYWRIGHT REPORT MANAGEMENT
 // =============================================================================
 
 def collectPlaywrightStatistics() {
@@ -274,14 +360,18 @@ def archiveApiArtifacts() {
 }
 
 def archiveWebArtifacts() {
+    // Archive both Playwright and Allure reports
+    archiveArtifacts artifacts: 'allure-report/**', allowEmptyArchive: true
     archiveArtifacts artifacts: 'playwright-report/**', allowEmptyArchive: true
     archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
+    archiveArtifacts artifacts: 'allure-results/**', allowEmptyArchive: true
 }
 
 def archiveWebArtifactsOnFailure() {
     archiveArtifacts artifacts: 'test-results/**/*.png', allowEmptyArchive: true
     archiveArtifacts artifacts: 'test-results/**/*.webm', allowEmptyArchive: true
     archiveArtifacts artifacts: 'test-results/**/*.zip', allowEmptyArchive: true
+    archiveArtifacts artifacts: 'allure-results/**', allowEmptyArchive: true
 }
 
 def archiveMobileArtifacts() {

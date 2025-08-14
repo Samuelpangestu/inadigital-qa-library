@@ -2,7 +2,7 @@
 
 /**
  * Core Pipeline Logic for Test Automation
- * Centralized functions used across API, Web, and Mobile test pipelines
+ * Enhanced for Web Allure Integration with Playwright
  */
 
 // =============================================================================
@@ -39,8 +39,11 @@ def setupApiDisplayName(def params, def env) {
 }
 
 def setupWebDisplayName(def params, def env) {
-    currentBuild.displayName = "#${currentBuild.number}: Web Test ${params.TARGET_ENV}: ${params.QA_SERVICE}"
-    currentBuild.description = "Playwright Web Automation - ${params.BROWSER} | Environment: ${params.TARGET_ENV}"
+    def tagToUse = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
+    def displayTag = params.USE_CUSTOM_TAG ? "@${tagToUse}" : params.QA_SERVICE
+
+    currentBuild.displayName = "#${currentBuild.number}: QA-WEB ${params.TARGET_ENV}: ${displayTag}"
+    currentBuild.description = "Playwright+Allure - ${params.BROWSER} | Tag: @${tagToUse} | Environment: ${params.TARGET_ENV}"
 }
 
 def setupMobileDisplayName(def params, def env) {
@@ -123,8 +126,8 @@ def executeApiTests(String tagToUse, String mavenPath, String allurePath) {
     return persistentHistoryDir
 }
 
-def executeWebTests(def params, String tagToUse, String nodePath, String pnpmPath) {
-    env.PATH = "${nodePath}:${pnpmPath}:${env.PATH}"
+def executeWebTests(def params, String tagToUse, String nodePath, String pnpmPath, String allurePath) {
+    env.PATH = "${nodePath}:${pnpmPath}:${allurePath}:${env.PATH}"
     env.ENV = params.TARGET_ENV.toUpperCase()
     env.HEADLESS = params.HEADLESS.toString()
     env.BROWSER = params.BROWSER
@@ -134,6 +137,14 @@ def executeWebTests(def params, String tagToUse, String nodePath, String pnpmPat
 
     def browserConfig = buildBrowserConfig(params.BROWSER)
     def playwrightConfig = buildPlaywrightConfig(params.HEADLESS)
+
+    // Clean previous Allure results for web tests
+    sh '''
+        echo "🧹 Cleaning previous Allure results..."
+        rm -rf allure-results/* || true
+        rm -rf allure-report/* || true
+        mkdir -p allure-results
+    '''
 
     try {
         timeout(time: 110, unit: 'MINUTES') {
@@ -189,18 +200,25 @@ def generateApiReport(def params) {
 }
 
 def generateWebReport(def params) {
-    echo "📊 Collecting web test statistics from JSON report"
+    def tagUsed = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
+    def persistentHistoryDir = "/var/lib/jenkins/allure-history/web-${tagUsed}"
+    def allurePath = params.allurePath
+
+    echo "📊 Collecting web test statistics and generating Allure report"
 
     // Debug: Check if files exist
     sh "ls -la test-results/ || echo 'test-results directory not found'"
     sh "ls -la playwright-report/ || echo 'playwright-report directory not found'"
 
-    // Collect test statistics
-    def testStats = testUtils.collectWebTestStatisticsFromJSON()
+    // Collect test statistics from Playwright
+    def testStats = reportManager.collectPlaywrightStatistics()
     echo "Collected test statistics: ${testStats}"
 
+    // Generate combined Allure report with Playwright artifacts
+    reportManager.generateWebAllureReport(persistentHistoryDir, allurePath, params, env)
+
     // Store statistics in environment variables
-    testUtils.storeWebTestStatistics(testStats, env)
+    reportManager.storeWebStatistics(testStats, env)
 
     // Set build result based on test outcomes
     if (testStats.failed > 0) {
