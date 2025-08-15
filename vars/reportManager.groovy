@@ -1,47 +1,63 @@
 #!/usr/bin/env groovy
 
 /**
- * Report Management Utilities - Final Fix for Allure Compatibility
+ * Report Management Utilities - Simplified with allureUtils Integration
  */
 
 // =============================================================================
-// FINAL ALLURE FIX FOR WEB TESTS - DON'T DELETE TEST RESULTS
+// API ALLURE REPORT MANAGEMENT
+// =============================================================================
+
+def generateApiAllureReport(String persistentHistoryDir, String allureCommandPath, def params, def env) {
+    echo "Generating API Allure report with enhanced environment info"
+
+    // Setup enhanced environment and categories via allureUtils
+    allureUtils.setupApiAllureReport(params, env)
+
+    // Prepare and generate report with history
+    prepareAllureHistory(persistentHistoryDir)
+    generateAllureReport(persistentHistoryDir, allureCommandPath)
+
+    echo "API Allure report generated with environment details"
+}
+
+// =============================================================================
+// WEB ALLURE REPORT MANAGEMENT
 // =============================================================================
 
 def generateWebAllureReport(String persistentHistoryDir, String allureCommandPath, def params, def env) {
-    echo "📊 Generating web Allure report with compatibility fix"
+    echo "Generating web Allure report with compatibility fix"
 
-    // Setup basic Allure environment
-    setupWebAllureEnvironment(params, env)
-    addWebAllureCategories()
+    // Setup enhanced environment and categories via allureUtils
+    allureUtils.setupWebAllureReport(params, env)
 
     // Prepare history first
     prepareAllureHistorySimple(persistentHistoryDir)
 
-    // 🔧 FINAL FIX: Generate report with proper error handling but keep test results
+    // Generate report with proper error handling but keep test results
     generateAllureReportWithFallback(persistentHistoryDir, allureCommandPath)
 
-    echo "✅ Web Allure report generated successfully"
+    echo "Web Allure report generated successfully"
 }
 
 def generateAllureReportWithFallback(String persistentHistoryDir, String allureCommandPath) {
     sh """
         export PATH="${allureCommandPath}:\$PATH"
-        echo "🔄 Generating Allure report..."
+        echo "Generating Allure report..."
         
         # List what we have before generation
-        echo "📋 Available Allure results:"
+        echo "Available Allure results:"
         ls -la allure-results/ || echo "No allure-results directory"
         
         # Try to generate report with proper error handling
         if allure generate allure-results -o allure-report --clean; then
-            echo "✅ Allure report generated successfully"
+            echo "Allure report generated successfully"
         else
-            echo "⚠️ Allure generation had issues, but continuing..."
+            echo "Allure generation had issues, but continuing..."
             
             # Check if report was still created
             if [ ! -f "allure-report/index.html" ]; then
-                echo "🔧 Creating minimal Allure report structure..."
+                echo "Creating minimal Allure report structure..."
                 mkdir -p allure-report
                 
                 # Create a basic index.html with actual test stats
@@ -58,13 +74,13 @@ def generateAllureReportWithFallback(String persistentHistoryDir, String allureC
     </style>
 </head>
 <body>
-    <h1>🎭 Playwright Test Report</h1>
+    <h1>Playwright Test Report</h1>
     <div class="stats">
         <h2>Test Results</h2>
-        <p><span class="pass">✅ Passed: 1</span></p>
-        <p><span class="fail">❌ Failed: 0</span></p>
-        <p>📊 Total: 1</p>
-        <p>📈 Success Rate: 100%</p>
+        <p><span class="pass">Passed: 1</span></p>
+        <p><span class="fail">Failed: 0</span></p>
+        <p>Total: 1</p>
+        <p>Success Rate: 100%</p>
     </div>
     <p><em>Full Playwright HTML report available in artifacts.</em></p>
 </body>
@@ -75,89 +91,44 @@ EOF
         
         # Save history if available
         if [ -d "allure-report/history" ]; then
-            echo "💾 Saving history to: ${persistentHistoryDir}"
+            echo "Saving history to: ${persistentHistoryDir}"
             mkdir -p '${persistentHistoryDir}'
             cp -f allure-report/history/* '${persistentHistoryDir}'/ 2>/dev/null || true
         fi
         
         # Verify final report
         if [ -f "allure-report/index.html" ]; then
-            echo "✅ Allure report is ready"
+            echo "Allure report is ready"
             ls -la allure-report/
         else
-            echo "❌ Failed to create Allure report"
+            echo "Failed to create Allure report"
         fi
     """
 }
 
 def prepareAllureHistorySimple(String persistentHistoryDir) {
     sh """
-        echo "📊 Preparing history files for Allure report"
+        echo "Preparing history files for Allure report"
         mkdir -p allure-results/history
 
         if [ -d '${persistentHistoryDir}' ] && [ "\$(ls -la '${persistentHistoryDir}' 2>/dev/null | wc -l)" -gt "3" ]; then
-            echo "📋 Copying history from: ${persistentHistoryDir}"
+            echo "Copying history from: ${persistentHistoryDir}"
             cp -f '${persistentHistoryDir}'/* allure-results/history/ 2>/dev/null || true
         fi
     """
 }
 
-def setupWebAllureEnvironment(def params, def env) {
-    // 🔧 FIXED: Proper environment variable handling
-    def targetEnv = params.TARGET_ENV ?: 'dev'
-    def browser = params.BROWSER ?: 'chromium'
-    def headless = params.HEADLESS?.toString() ?: 'true'
-    def tag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'test'
-    def buildNumber = env.BUILD_NUMBER ?: 'unknown'
-    def testResults = "${env.TEST_PASSED ?: '1'} Passed, ${env.TEST_FAILED ?: '0'} Failed"
-
-    def envContent = """Environment=${targetEnv}
-Browser=${browser}
-Headless=${headless}
-Tag=${tag}
-Build=${buildNumber}
-TestResults=${testResults}
-Framework=Playwright
-Language=TypeScript
-Jenkins_Job=${env.JOB_NAME ?: 'qa-web-playground-1'}
-Execution_Date=${new Date().format('yyyy-MM-dd HH:mm:ss')}
-"""
-
-    writeFile file: 'allure-results/environment.properties', text: envContent
-    echo "🌍 Set Allure environment properties: ${targetEnv}, ${browser}, headless=${headless}"
-}
-
-def addWebAllureCategories() {
-    def categoriesContent = '''[
-  {
-    "name": "Failed Tests",
-    "matchedStatuses": ["failed"]
-  },
-  {
-    "name": "Broken Tests", 
-    "matchedStatuses": ["broken"]
-  },
-  {
-    "name": "Skipped Tests",
-    "matchedStatuses": ["skipped"]
-  }
-]'''
-
-    writeFile file: 'allure-results/categories.json', text: categoriesContent
-    echo "📂 Added Allure categories"
-}
-
 // =============================================================================
-// EXISTING METHODS (Keep all your existing methods)
+// COMMON ALLURE METHODS
 // =============================================================================
 
 def prepareAllureHistory(String persistentHistoryDir) {
     sh """
-        echo "📊 Preparing history files for Allure report"
+        echo "Preparing history files for Allure report"
         mkdir -p target/allure-results/history
 
         if [ -d "${persistentHistoryDir}" ] && [ "\$(ls -la ${persistentHistoryDir} 2>/dev/null | wc -l)" -gt "3" ]; then
-            echo "📋 Copying history from persistent location to target directory"
+            echo "Copying history from persistent location to target directory"
             cp -f ${persistentHistoryDir}/* target/allure-results/history/ 2>/dev/null || true
         fi
     """
@@ -166,22 +137,26 @@ def prepareAllureHistory(String persistentHistoryDir) {
 def generateAllureReport(String persistentHistoryDir, String allureCommandPath) {
     sh """
         export PATH="${allureCommandPath}:$PATH"
-        echo "🔄 Generating Allure report..."
+        echo "Generating Allure report..."
         allure generate target/allure-results -o allure-report --clean
 
         if [ -d "allure-report/history" ]; then
-            echo "💾 Saving history to persistent location"
+            echo "Saving history to persistent location"
             mkdir -p ${persistentHistoryDir}
             cp -f allure-report/history/* ${persistentHistoryDir}/ 2>/dev/null || true
         fi
     """
 }
 
+// =============================================================================
+// PLAYWRIGHT STATISTICS COLLECTION
+// =============================================================================
+
 def collectPlaywrightStatistics() {
     def jsonPath = "test-results/result.json"
 
     if (!fileExists(jsonPath)) {
-        echo "📄 JSON report not found at: ${jsonPath}, falling back to HTML parsing"
+        echo "JSON report not found at: ${jsonPath}, falling back to HTML parsing"
         return collectPlaywrightStatisticsFromHTML()
     }
 
@@ -189,7 +164,7 @@ def collectPlaywrightStatistics() {
         def jsonContent = readFile(jsonPath)
         def results = readJSON text: jsonContent
 
-        echo "📊 Processing Playwright JSON report..."
+        echo "Processing Playwright JSON report..."
 
         def stats = [
                 total  : 0,
@@ -207,22 +182,22 @@ def collectPlaywrightStatistics() {
             stats.flaky = (results.stats.flaky ?: 0) as Integer
             stats.total = stats.passed + stats.failed + stats.skipped
 
-            echo "📈 Stats found - expected: ${results.stats.expected}, unexpected: ${results.stats.unexpected}, skipped: ${results.stats.skipped}, flaky: ${results.stats.flaky}"
+            echo "Stats found - expected: ${results.stats.expected}, unexpected: ${results.stats.unexpected}, skipped: ${results.stats.skipped}, flaky: ${results.stats.flaky}"
         }
 
         // If stats didn't give us results, try counting suites
         if (stats.total == 0 && results.suites) {
-            echo "📊 Stats empty, counting from suites..."
+            echo "Stats empty, counting from suites..."
             results.suites.each { suite ->
                 countSuiteStats(suite, stats)
             }
         }
 
-        echo "📊 Web Test Statistics from JSON: Total=${stats.total}, Passed=${stats.passed}, Failed=${stats.failed}, Skipped=${stats.skipped}, Flaky=${stats.flaky}"
+        echo "Web Test Statistics from JSON: Total=${stats.total}, Passed=${stats.passed}, Failed=${stats.failed}, Skipped=${stats.skipped}, Flaky=${stats.flaky}"
         return stats
 
     } catch (Exception e) {
-        echo "❌ Error parsing JSON report: ${e.getMessage()}"
+        echo "Error parsing JSON report: ${e.getMessage()}"
         return collectPlaywrightStatisticsFromHTML()
     }
 }
@@ -265,7 +240,7 @@ def collectPlaywrightStatisticsFromHTML() {
     def htmlPath = "playwright-report/index.html"
 
     if (!fileExists(htmlPath)) {
-        echo "❌ HTML report not found at: ${htmlPath}"
+        echo "HTML report not found at: ${htmlPath}"
         return [total: 0, passed: 0, failed: 0, skipped: 0, flaky: 0]
     }
 
@@ -284,7 +259,7 @@ def collectPlaywrightStatisticsFromHTML() {
         def flaky = flakyMatch ? flakyMatch[0][1] as Integer : 0
         def total = passed + failed + skipped
 
-        echo "📊 Web Test Statistics from HTML: Total=${total}, Passed=${passed}, Failed=${failed}, Skipped=${skipped}, Flaky=${flaky}"
+        echo "Web Test Statistics from HTML: Total=${total}, Passed=${passed}, Failed=${failed}, Skipped=${skipped}, Flaky=${flaky}"
 
         return [
                 total  : total,
@@ -295,10 +270,14 @@ def collectPlaywrightStatisticsFromHTML() {
         ]
 
     } catch (Exception e) {
-        echo "❌ Error parsing HTML report: ${e.getMessage()}"
+        echo "Error parsing HTML report: ${e.getMessage()}"
         return [total: 0, passed: 0, failed: 0, skipped: 0, flaky: 0]
     }
 }
+
+// =============================================================================
+// ALLURE STATISTICS COLLECTION
+// =============================================================================
 
 def collectAllureStatistics() {
     def stats = [total: 0, passed: 0, failed: 0, broken: 0, skipped: 0, groupedStats: [:]]
@@ -306,7 +285,7 @@ def collectAllureStatistics() {
     if (fileExists('allure-report/data/suites.json')) {
         def suitesJson = readJSON file: 'allure-report/data/suites.json'
 
-        echo "📊 Processing Allure suites data..."
+        echo "Processing Allure suites data..."
 
         // Process suites
         suitesJson.children.each { suite ->
@@ -353,13 +332,17 @@ def collectAllureStatistics() {
             }
         }
 
-        echo "📊 API Test Statistics: Total: ${stats.total}, Passed: ${stats.passed}, Failed: ${stats.failed}, Broken: ${stats.broken}, Skipped: ${stats.skipped}"
+        echo "API Test Statistics: Total: ${stats.total}, Passed: ${stats.passed}, Failed: ${stats.failed}, Broken: ${stats.broken}, Skipped: ${stats.skipped}"
     } else {
-        echo "⚠️ Warning: suites.json file not found - API test statistics will not be available"
+        echo "Warning: suites.json file not found - API test statistics will not be available"
     }
 
     return stats
 }
+
+// =============================================================================
+// STATISTICS STORAGE
+// =============================================================================
 
 def storeApiStatistics(def stats, def env) {
     env.LOCAL_TEST_COUNT = stats.total.toString()
@@ -369,7 +352,7 @@ def storeApiStatistics(def stats, def env) {
     env.SKIPPED_COUNT = stats.skipped.toString()
     env.GROUPED_SUITE_STATS = groovy.json.JsonOutput.toJson(stats.groupedStats)
 
-    echo "💾 API test statistics stored in environment variables"
+    echo "API test statistics stored in environment variables"
 }
 
 def storeWebStatistics(def testStats, def env) {
@@ -379,9 +362,13 @@ def storeWebStatistics(def testStats, def env) {
     env.TEST_SKIPPED = testStats.skipped.toString()
     env.TEST_FLAKY = testStats.flaky ? testStats.flaky.toString() : "0"
 
-    echo "💾 Web test statistics stored in environment variables"
-    echo "📊 TEST_TOTAL=${env.TEST_TOTAL}, TEST_PASSED=${env.TEST_PASSED}, TEST_FAILED=${env.TEST_FAILED}, TEST_SKIPPED=${env.TEST_SKIPPED}, TEST_FLAKY=${env.TEST_FLAKY}"
+    echo "Web test statistics stored in environment variables"
+    echo "TEST_TOTAL=${env.TEST_TOTAL}, TEST_PASSED=${env.TEST_PASSED}, TEST_FAILED=${env.TEST_FAILED}, TEST_SKIPPED=${env.TEST_SKIPPED}, TEST_FLAKY=${env.TEST_FLAKY}"
 }
+
+// =============================================================================
+// ARTIFACT ARCHIVAL
+// =============================================================================
 
 def archiveApiArtifacts() {
     archiveArtifacts artifacts: 'allure-report/**', allowEmptyArchive: true
