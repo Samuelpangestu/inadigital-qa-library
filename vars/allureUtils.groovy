@@ -40,10 +40,8 @@ Language=Java
 Tag=${tag}
 Service=${serviceName}
 Build=${buildNumber}
-TestResults=${testResults}
 Sheets=${sheets}
 Jenkins_Job=${env.JOB_NAME ?: 'qa-api-automation'}
-Execution_Date=${new Date().format('yyyy-MM-dd HH:mm:ss')}
 Maven_Version=${getMavenVersion()}
 Java_Version=${getJavaVersion()}
 """
@@ -130,11 +128,9 @@ Browser=${browser}
 Headless=${headless}
 Tag=${tag}
 Build=${buildNumber}
-TestResults=${testResults}
 Framework=Playwright
 Language=TypeScript
 Jenkins_Job=${env.JOB_NAME ?: 'qa-web-automation'}
-Execution_Date=${new Date().format('yyyy-MM-dd HH:mm:ss')}
 Node_Version=${getNodeVersion()}
 Playwright_Version=${getPlaywrightVersion()}
 """
