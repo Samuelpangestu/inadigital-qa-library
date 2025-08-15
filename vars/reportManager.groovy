@@ -103,16 +103,28 @@ def prepareAllureHistorySimple(String persistentHistoryDir) {
 }
 
 def setupWebAllureEnvironment(def params, def env) {
-    def envContent = """Environment=${params.TARGET_ENV}
-Browser=${params.BROWSER}
-Headless=${params.HEADLESS}
-Tag=${env.EFFECTIVE_QA_SERVICE}
-Build=${env.BUILD_NUMBER}
-TestResults=1 Passed, 0 Failed
+    // 🔧 FIXED: Proper environment variable handling
+    def targetEnv = params.TARGET_ENV ?: 'dev'
+    def browser = params.BROWSER ?: 'chromium'
+    def headless = params.HEADLESS?.toString() ?: 'true'
+    def tag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'test'
+    def buildNumber = env.BUILD_NUMBER ?: 'unknown'
+    def testResults = "${env.TEST_PASSED ?: '1'} Passed, ${env.TEST_FAILED ?: '0'} Failed"
+
+    def envContent = """Environment=${targetEnv}
+Browser=${browser}
+Headless=${headless}
+Tag=${tag}
+Build=${buildNumber}
+TestResults=${testResults}
+Framework=Playwright
+Language=TypeScript
+Jenkins_Job=${env.JOB_NAME ?: 'qa-web-playground-1'}
+Execution_Date=${new Date().format('yyyy-MM-dd HH:mm:ss')}
 """
 
     writeFile file: 'allure-results/environment.properties', text: envContent
-    echo "🌍 Set Allure environment properties"
+    echo "🌍 Set Allure environment properties: ${targetEnv}, ${browser}, headless=${headless}"
 }
 
 def addWebAllureCategories() {
@@ -180,11 +192,11 @@ def collectPlaywrightStatistics() {
         echo "📊 Processing Playwright JSON report..."
 
         def stats = [
-                total: 0,
-                passed: 0,
-                failed: 0,
+                total  : 0,
+                passed : 0,
+                failed : 0,
                 skipped: 0,
-                flaky: 0
+                flaky  : 0
         ]
 
         // Try stats first (Playwright v1.53+ format)
@@ -275,11 +287,11 @@ def collectPlaywrightStatisticsFromHTML() {
         echo "📊 Web Test Statistics from HTML: Total=${total}, Passed=${passed}, Failed=${failed}, Skipped=${skipped}, Flaky=${flaky}"
 
         return [
-                total: total,
-                passed: passed,
-                failed: failed,
+                total  : total,
+                passed : passed,
+                failed : failed,
                 skipped: skipped,
-                flaky: flaky
+                flaky  : flaky
         ]
 
     } catch (Exception e) {
