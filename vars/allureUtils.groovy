@@ -88,6 +88,16 @@ def addApiAllureCategories() {
     "name": "Server Issues",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(500|502|503|504).*"
+  },
+  {
+    "name": "Internal API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*internal-api.*"
+  },
+  {
+    "name": "External API", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*external-api.*"
   }
 ]'''
 
