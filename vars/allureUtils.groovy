@@ -92,12 +92,12 @@ def addApiAllureCategories() {
   {
     "name": "Internal API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*internal-api.*"
+    "messageRegex": ".*Internal API.*"
   },
   {
     "name": "External API", 
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*external-api.*"
+    "messageRegex": ".*External API.*"
   }
 ]'''
 
