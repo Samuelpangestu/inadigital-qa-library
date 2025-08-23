@@ -56,23 +56,14 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "Failed API Tests",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*"
+    "name": "External API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*External API.*"
   },
   {
-    "name": "Broken API Tests", 
-    "matchedStatuses": ["broken"],
-    "messageRegex": ".*"
-  },
-  {
-    "name": "Skipped Tests",
-    "matchedStatuses": ["skipped"]
-  },
-  {
-    "name": "Infrastructure Issues",
-    "matchedStatuses": ["broken", "failed"],
-    "messageRegex": ".*(timeout|connection|network).*"
+    "name": "Internal API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*Internal API.*"
   },
   {
     "name": "Authentication Issues",
@@ -90,19 +81,26 @@ def addApiAllureCategories() {
     "messageRegex": ".*(500|502|503|504).*"
   },
   {
-    "name": "Internal API",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal API.*"
+    "name": "Infrastructure Issues",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(timeout|connection|network).*"
   },
   {
-    "name": "External API", 
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*External API.*"
+    "name": "Failed API Tests",
+    "matchedStatuses": ["failed"]
+  },
+  {
+    "name": "Broken API Tests", 
+    "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories for API tests with External/Internal API support"
+    echo "🏷️ Added Allure categories for API tests with External/Internal API support (External/Internal API prioritized)"
 }
 
 /**
