@@ -51,7 +51,7 @@ Java_Version=${getJavaVersion()}
 }
 
 /**
- * Add categories for API test results
+ * Add categories for API test results with External/Internal API support
  */
 def addApiAllureCategories() {
     def categoriesContent = '''[
@@ -102,7 +102,7 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories for API tests"
+    echo "Added Allure categories for API tests with External/Internal API support"
 }
 
 /**
