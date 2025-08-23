@@ -10,12 +10,10 @@
 // =============================================================================
 
 def prepareHistory(String persistentHistoryDir) {
-    // Delegate to reportManager for consistency
     reportManager.prepareAllureHistory(persistentHistoryDir)
 }
 
 def generateReport(String persistentHistoryDir, String allureCommandPath) {
-    // Delegate to reportManager for consistency
     reportManager.generateAllureReport(persistentHistoryDir, allureCommandPath)
 }
 
@@ -23,16 +21,12 @@ def generateReport(String persistentHistoryDir, String allureCommandPath) {
 // API ALLURE ENVIRONMENT SETUP
 // =============================================================================
 
-/**
- * Setup Allure environment for API tests
- */
 def setupApiAllureEnvironment(def params, def env) {
     def targetEnv = params.TARGET_ENV ?: 'dev'
     def tag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'api'
     def buildNumber = env.BUILD_NUMBER ?: 'unknown'
     def serviceName = params.QA_SERVICE_NAME ?: params.QA_SERVICE
     def sheets = env.EFFECTIVE_SHEET_NAMES ?: 'AUTO'
-    def testResults = "${env.PASSED_COUNT ?: '0'} Passed, ${env.FAILED_COUNT ?: '0'} Failed, ${env.BROKEN_COUNT ?: '0'} Broken"
 
     def envContent = """Environment=${targetEnv}
 Framework=RestAssured+Cucumber
@@ -50,20 +44,17 @@ Java_Version=${getJavaVersion()}
     echo "Set Allure environment properties for API tests: ${targetEnv}, ${tag}, ${serviceName}"
 }
 
-/**
- * Add categories for API test results with External/Internal API support
- */
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
     "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*External API.*"
+    "traceRegex": ".*external.*"
   },
   {
-    "name": "Internal API",
+    "name": "Internal API", 
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal API.*"
+    "traceRegex": ".*internal.*"
   },
   {
     "name": "Authentication Issues",
@@ -100,19 +91,12 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "🏷️ Added Allure categories for API tests with External/Internal API support (External/Internal API prioritized)"
+    echo "Added Allure categories with External/Internal API support"
 }
 
-/**
- * Complete API Allure setup with environment and categories
- */
 def setupApiAllureReport(def params, def env) {
-    // Setup environment properties
     setupApiAllureEnvironment(params, env)
-
-    // Add categories for better organization
     addApiAllureCategories()
-
     echo "API Allure report setup completed"
 }
 
@@ -120,16 +104,12 @@ def setupApiAllureReport(def params, def env) {
 // WEB ALLURE ENVIRONMENT SETUP
 // =============================================================================
 
-/**
- * Setup Allure environment for Web tests
- */
 def setupWebAllureEnvironment(def params, def env) {
     def targetEnv = params.TARGET_ENV ?: 'dev'
     def browser = params.BROWSER ?: 'chromium'
     def headless = params.HEADLESS?.toString() ?: 'true'
     def tag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'test'
     def buildNumber = env.BUILD_NUMBER ?: 'unknown'
-    def testResults = "${env.TEST_PASSED ?: '1'} Passed, ${env.TEST_FAILED ?: '0'} Failed"
 
     def envContent = """Environment=${targetEnv}
 Browser=${browser}
@@ -147,9 +127,6 @@ Playwright_Version=${getPlaywrightVersion()}
     echo "Set Allure environment properties for Web tests: ${targetEnv}, ${browser}, headless=${headless}"
 }
 
-/**
- * Add categories for Web test results
- */
 def addWebAllureCategories() {
     def categoriesContent = '''[
   {
@@ -192,16 +169,9 @@ def addWebAllureCategories() {
     echo "Added Allure categories for Web tests"
 }
 
-/**
- * Complete Web Allure setup with environment and categories
- */
 def setupWebAllureReport(def params, def env) {
-    // Setup environment properties
     setupWebAllureEnvironment(params, env)
-
-    // Add categories for better organization
     addWebAllureCategories()
-
     echo "Web Allure report setup completed"
 }
 
@@ -245,9 +215,6 @@ def getPlaywrightVersion() {
 // LEGACY ALLURE UTILITIES (For Backward Compatibility)
 // =============================================================================
 
-/**
- * Clean up old allure results before new test run
- */
 def cleanAllureResults() {
     sh '''
         echo "Cleaning previous Allure results..."
@@ -257,9 +224,6 @@ def cleanAllureResults() {
     '''
 }
 
-/**
- * Copy additional files to allure results
- */
 def copyAdditionalFiles(List<String> filePaths) {
     filePaths.each { filePath ->
         if (fileExists(filePath)) {
@@ -269,9 +233,6 @@ def copyAdditionalFiles(List<String> filePaths) {
     }
 }
 
-/**
- * Set Allure environment properties (legacy method)
- */
 def setAllureEnvironment(Map environmentProps) {
     def envContent = environmentProps.collect { key, value ->
         "${key}=${value}"
@@ -281,9 +242,6 @@ def setAllureEnvironment(Map environmentProps) {
     echo "Set Allure environment properties"
 }
 
-/**
- * Add categories for test results (legacy method - delegates to API)
- */
 def addAllureCategories() {
     addApiAllureCategories()
 }
