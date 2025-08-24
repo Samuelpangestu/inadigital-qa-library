@@ -49,12 +49,12 @@ def addApiAllureCategories() {
   {
     "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*external.*"
+    "traceRegex": ".*(External API|external-api|api_category.*External).*"
   },
   {
     "name": "Internal API", 
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*internal.*"
+    "traceRegex": ".*(Internal API|internal-api|api_category.*Internal).*"
   },
   {
     "name": "Authentication Issues",
