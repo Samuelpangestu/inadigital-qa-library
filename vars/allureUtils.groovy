@@ -56,31 +56,51 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "Ignored tests",
-    "matchedStatuses": ["skipped"]
+    "name": "External API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*External API.*"
   },
   {
-    "name": "Infrastructure problems",
+    "name": "Internal API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*Internal API.*"
+  },
+  {
+    "name": "Authentication Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(401|403|unauthorized|forbidden).*"
+  },
+  {
+    "name": "Data Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(400|404|validation|schema).*"
+  },
+  {
+    "name": "Server Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(500|502|503|504).*"
+  },
+  {
+    "name": "Infrastructure Issues",
     "matchedStatuses": ["broken", "failed"],
-    "messageRegex": ".*infra.*"
+    "messageRegex": ".*(timeout|connection|network).*"
   },
   {
-    "name": "Outdated tests",
-    "matchedStatuses": ["broken"],
-    "traceRegex": ".*FileNotFoundException.*"
-  },
-  {
-    "name": "Product defects",
+    "name": "Failed API Tests",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Test defects",
+    "name": "Broken API Tests", 
     "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "📂 Added Allure categories configuration (restored original working version)"
+    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
