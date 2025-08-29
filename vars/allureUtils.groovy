@@ -56,23 +56,14 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "Failed API Tests",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*"
+    "name": "External API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*(@external-api|external-api).*"
   },
   {
-    "name": "Broken API Tests", 
-    "matchedStatuses": ["broken"],
-    "messageRegex": ".*"
-  },
-  {
-    "name": "Skipped Tests",
-    "matchedStatuses": ["skipped"]
-  },
-  {
-    "name": "Infrastructure Issues",
-    "matchedStatuses": ["broken", "failed"],
-    "messageRegex": ".*(timeout|connection|network).*"
+    "name": "Internal API", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*(@internal-api|internal-api).*"
   },
   {
     "name": "Authentication Issues",
@@ -88,6 +79,23 @@ def addApiAllureCategories() {
     "name": "Server Issues",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(500|502|503|504).*"
+  },
+  {
+    "name": "Infrastructure Issues",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(timeout|connection|network).*"
+  },
+  {
+    "name": "Failed API Tests",
+    "matchedStatuses": ["failed"]
+  },
+  {
+    "name": "Broken API Tests", 
+    "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
   }
 ]'''
 
