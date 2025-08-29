@@ -51,79 +51,68 @@ Java_Version=${getJavaVersion()}
 }
 
 /**
- * Add categories for API test results with External/Internal API support
+ * Add categories for test results - restored to original working configuration
  */
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "External API",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "matchedMetadata": [
-      {
-        "name": "tag",
-        "value": "external-api"
-      }
-    ]
+    "name": "Ignored tests",
+    "matchedStatuses": ["skipped"]
   },
   {
-    "name": "Internal API", 
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "matchedMetadata": [
-      {
-        "name": "tag",
-        "value": "internal-api"
-      }
-    ]
-  },
-  {
-    "name": "Authentication Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(401|403|unauthorized|forbidden).*"
-  },
-  {
-    "name": "Data Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(400|404|validation|schema).*"
-  },
-  {
-    "name": "Server Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(500|502|503|504).*"
-  },
-  {
-    "name": "Infrastructure Issues",
+    "name": "Infrastructure problems",
     "matchedStatuses": ["broken", "failed"],
-    "messageRegex": ".*(timeout|connection|network).*"
+    "messageRegex": ".*infra.*"
   },
   {
-    "name": "Failed API Tests",
+    "name": "Outdated tests",
+    "matchedStatuses": ["broken"],
+    "traceRegex": ".*FileNotFoundException.*"
+  },
+  {
+    "name": "Product defects",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Broken API Tests", 
+    "name": "Test defects",
     "matchedStatuses": ["broken"]
-  },
-  {
-    "name": "Skipped Tests",
-    "matchedStatuses": ["skipped"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with External/Internal API support based on Cucumber tags"
+    echo "📂 Added Allure categories configuration (restored original working version)"
 }
 
 /**
  * Complete API Allure setup with environment and categories
  */
 def setupApiAllureReport(def params, def env) {
+    // Ensure target directory exists
+    sh 'mkdir -p target/allure-results'
+
     // Setup environment properties
     setupApiAllureEnvironment(params, env)
 
     // Add categories for better organization
     addApiAllureCategories()
 
+    // Generate allure.properties for better static serving
+    generateAllureProperties()
+
     echo "API Allure report setup completed"
+}
+
+/**
+ * Generate allure.properties for better report configuration
+ */
+def generateAllureProperties() {
+    def propertiesContent = '''allure.results.directory=target/allure-results
+allure.link.issue.pattern=https://example.org/issue/{}
+allure.link.tms.pattern=https://example.org/tms/{}
+'''
+
+    writeFile file: 'allure.properties', text: propertiesContent
+    echo "Generated allure.properties configuration"
 }
 
 // =============================================================================
