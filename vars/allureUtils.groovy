@@ -51,19 +51,29 @@ Java_Version=${getJavaVersion()}
 }
 
 /**
- * Add categories for API test results
+ * Add categories for API test results with External/Internal API support
  */
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
     "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*External API.*"
+    "matchedMetadata": [
+      {
+        "name": "tag",
+        "value": "external-api"
+      }
+    ]
   },
   {
-    "name": "Internal API",
+    "name": "Internal API", 
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*Internal API.*"
+    "matchedMetadata": [
+      {
+        "name": "tag",
+        "value": "internal-api"
+      }
+    ]
   },
   {
     "name": "Authentication Issues",
@@ -100,7 +110,7 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with External/Internal API support"
+    echo "Added Allure categories with External/Internal API support based on Cucumber tags"
 }
 
 /**
