@@ -58,12 +58,12 @@ def addApiAllureCategories() {
   {
     "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*(@external-api|external-api).*"
+    "traceRegex": ".*External API.*"
   },
   {
-    "name": "Internal API", 
+    "name": "Internal API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*(@internal-api|internal-api).*"
+    "traceRegex": ".*Internal API.*"
   },
   {
     "name": "Authentication Issues",
@@ -100,7 +100,7 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories for API tests"
+    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
