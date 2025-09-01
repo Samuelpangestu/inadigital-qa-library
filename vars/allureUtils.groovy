@@ -66,6 +66,11 @@ def addApiAllureCategories() {
     "traceRegex": ".*Internal API.*"
   },
   {
+    "name": "Read timed out",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
+  },
+  {
     "name": "Authentication Issues",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(401|403|unauthorized|forbidden).*"
