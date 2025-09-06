@@ -2,7 +2,7 @@
 
 /**
  * Allure Utilities - Complete API & Web Support
- * Centralized Allure environment and category management with tag-based categories
+ * Centralized Allure environment and category management
  */
 
 // =============================================================================
@@ -32,6 +32,7 @@ def setupApiAllureEnvironment(def params, def env) {
     def buildNumber = env.BUILD_NUMBER ?: 'unknown'
     def serviceName = params.QA_SERVICE_NAME ?: params.QA_SERVICE
     def sheets = env.EFFECTIVE_SHEET_NAMES ?: 'AUTO'
+    def testResults = "${env.PASSED_COUNT ?: '0'} Passed, ${env.FAILED_COUNT ?: '0'} Failed, ${env.BROKEN_COUNT ?: '0'} Broken"
 
     def envContent = """Environment=${targetEnv}
 Framework=RestAssured+Cucumber
@@ -50,177 +51,65 @@ Java_Version=${getJavaVersion()}
 }
 
 /**
- * Enhanced categories for test results with tag-based categorization
+ * Add categories for test results - restored to original working configuration
  */
-def addApiAllureCategories(def params, def env) {
-    def currentTag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'api'
-
-    // Build tag-based categories dynamically
-    def tagCategories = buildTagBasedCategories(currentTag)
-
-    // Combine with error-based categories
-    def errorCategories = getErrorBasedCategories()
-
-    def allCategories = tagCategories + errorCategories
-
-    def categoriesContent = groovy.json.JsonOutput.toJson(allCategories)
+def addApiAllureCategories() {
+    def categoriesContent = '''[
+  {
+    "name": "External API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*External API.*"
+  },
+  {
+    "name": "Internal API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*Internal API.*"
+  },
+  {
+    "name": "Read timed out",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
+  },
+  {
+    "name": "Authentication Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(401|403|unauthorized|forbidden).*"
+  },
+  {
+    "name": "Data Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(400|404|validation|schema).*"
+  },
+  {
+    "name": "Server Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(500|502|503|504).*"
+  },
+  {
+    "name": "Infrastructure Issues",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(timeout|connection|network).*"
+  },
+  {
+    "name": "Failed API Tests",
+    "matchedStatuses": ["failed"]
+  },
+  {
+    "name": "Broken API Tests", 
+    "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
+  }
+]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with tag-based and error-based categorization for: ${currentTag}"
+    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
- * Build categories based on current test tags
- */
-def buildTagBasedCategories(String currentTag) {
-    def categories = []
-
-    // Priority/Severity Categories
-    categories.add([
-            name: "High Priority Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@high.*"
-    ])
-
-    categories.add([
-            name: "Medium Priority Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@medium.*"
-    ])
-
-    categories.add([
-            name: "Low Priority Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@low.*"
-    ])
-
-    // API Type Categories
-    categories.add([
-            name: "External API Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@external-api.*"
-    ])
-
-    categories.add([
-            name: "Internal API Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@internal-api.*"
-    ])
-
-    // Test Type Categories
-    categories.add([
-            name: "Login Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@login.*"
-    ])
-
-    categories.add([
-            name: "Smoke Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@smoke.*"
-    ])
-
-    categories.add([
-            name: "Regression Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@regression.*"
-    ])
-
-    categories.add([
-            name: "Positive Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@positive.*"
-    ])
-
-    categories.add([
-            name: "Negative Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            messageRegex: ".*@negative.*"
-    ])
-
-    // Service-specific Categories (based on current tag)
-    if (currentTag.contains('inagov')) {
-        categories.add([
-                name: "INAGov Service Tests",
-                matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                traceRegex: ".*@inagov.*"
-        ])
-    }
-
-    if (currentTag.contains('inapas')) {
-        categories.add([
-                name: "INAPas Service Tests",
-                matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                traceRegex: ".*@inapas.*"
-        ])
-    }
-
-    if (currentTag.contains('sbu')) {
-        categories.add([
-                name: "SBU Service Tests",
-                matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                traceRegex: ".*@sbu.*"
-        ])
-    }
-
-    if (currentTag.contains('peruriid')) {
-        categories.add([
-                name: "PeruriID Service Tests",
-                matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                traceRegex: ".*@peruriid.*"
-        ])
-    }
-
-    return categories
-}
-
-/**
- * Get error-based categories (existing functionality)
- */
-def getErrorBasedCategories() {
-    return [
-            [
-                    name: "Read Timed Out",
-                    matchedStatuses: ["broken", "failed"],
-                    traceRegex: ".*SocketTimeoutException.*Read timed out.*"
-            ],
-            [
-                    name: "Authentication Issues",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(401|403|unauthorized|forbidden).*"
-            ],
-            [
-                    name: "Data Issues",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(400|404|validation|schema).*"
-            ],
-            [
-                    name: "Server Issues",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(500|502|503|504).*"
-            ],
-            [
-                    name: "Infrastructure Issues",
-                    matchedStatuses: ["broken", "failed"],
-                    messageRegex: ".*(timeout|connection|network).*"
-            ],
-            [
-                    name: "Failed Tests",
-                    matchedStatuses: ["failed"]
-            ],
-            [
-                    name: "Broken Tests",
-                    matchedStatuses: ["broken"]
-            ],
-            [
-                    name: "Skipped Tests",
-                    matchedStatuses: ["skipped"]
-            ]
-    ]
-}
-
-/**
- * Complete API Allure setup with environment and enhanced categories
+ * Complete API Allure setup with environment and categories
  */
 def setupApiAllureReport(def params, def env) {
     // Ensure target directory exists
@@ -229,13 +118,13 @@ def setupApiAllureReport(def params, def env) {
     // Setup environment properties
     setupApiAllureEnvironment(params, env)
 
-    // Add enhanced categories for better organization
-    addApiAllureCategories(params, env)
+    // Add categories for better organization
+    addApiAllureCategories()
 
     // Generate allure.properties for better static serving
     generateAllureProperties()
 
-    echo "API Allure report setup completed with tag-based categories"
+    echo "API Allure report setup completed"
 }
 
 /**
@@ -264,6 +153,7 @@ def setupWebAllureEnvironment(def params, def env) {
     def headless = params.HEADLESS?.toString() ?: 'true'
     def tag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'test'
     def buildNumber = env.BUILD_NUMBER ?: 'unknown'
+    def testResults = "${env.TEST_PASSED ?: '1'} Passed, ${env.TEST_FAILED ?: '0'} Failed"
 
     def envContent = """Environment=${targetEnv}
 Browser=${browser}
@@ -282,90 +172,48 @@ Playwright_Version=${getPlaywrightVersion()}
 }
 
 /**
- * Add categories for Web test results with tag support
+ * Add categories for Web test results
  */
-def addWebAllureCategories(def params, def env) {
-    def currentTag = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE ?: 'test'
-
-    // Build tag-based categories for web tests
-    def tagCategories = buildWebTagCategories(currentTag)
-
-    // Web-specific error categories
-    def webErrorCategories = [
-            [
-                    name: "UI Issues",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(timeout|element not found|selector).*"
-            ],
-            [
-                    name: "Navigation Issues",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(navigation|page load|redirect).*"
-            ],
-            [
-                    name: "Assertion Failures",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*(expect|assertion|toBe|toHaveText).*"
-            ],
-            [
-                    name: "Flaky Tests",
-                    matchedStatuses: ["failed"],
-                    messageRegex: ".*retry.*"
-            ],
-            [
-                    name: "Failed Tests",
-                    matchedStatuses: ["failed"]
-            ],
-            [
-                    name: "Broken Tests",
-                    matchedStatuses: ["broken"]
-            ],
-            [
-                    name: "Skipped Tests",
-                    matchedStatuses: ["skipped"]
-            ]
-    ]
-
-    def allCategories = tagCategories + webErrorCategories
-    def categoriesContent = groovy.json.JsonOutput.toJson(allCategories)
+def addWebAllureCategories() {
+    def categoriesContent = '''[
+  {
+    "name": "Failed Tests",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "Broken Tests", 
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
+  },
+  {
+    "name": "Flaky Tests",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*retry.*"
+  },
+  {
+    "name": "UI Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(timeout|element not found|selector).*"
+  },
+  {
+    "name": "Navigation Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(navigation|page load|redirect).*"
+  },
+  {
+    "name": "Assertion Failures",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(expect|assertion|toBe|toHaveText).*"
+  }
+]'''
 
     writeFile file: 'allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories for Web tests with tag support"
-}
-
-/**
- * Build web-specific tag categories
- */
-def buildWebTagCategories(String currentTag) {
-    def categories = []
-
-    // Common web test categories
-    categories.add([
-            name: "Login Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@login.*"
-    ])
-
-    categories.add([
-            name: "Smoke Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@smoke.*"
-    ])
-
-    categories.add([
-            name: "Regression Tests",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@regression.*"
-    ])
-
-    // Priority categories
-    categories.add([
-            name: "High Priority",
-            matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@high.*"
-    ])
-
-    return categories
+    echo "Added Allure categories for Web tests"
 }
 
 /**
@@ -376,9 +224,9 @@ def setupWebAllureReport(def params, def env) {
     setupWebAllureEnvironment(params, env)
 
     // Add categories for better organization
-    addWebAllureCategories(params, env)
+    addWebAllureCategories()
 
-    echo "Web Allure report setup completed with tag-based categories"
+    echo "Web Allure report setup completed"
 }
 
 // =============================================================================
@@ -458,13 +306,10 @@ def setAllureEnvironment(Map environmentProps) {
 }
 
 /**
- * Add categories for test results (legacy method - delegates to enhanced API)
+ * Add categories for test results (legacy method - delegates to API)
  */
 def addAllureCategories() {
-    // Use default parameters for backward compatibility
-    def mockParams = [QA_SERVICE: 'api']
-    def mockEnv = [EFFECTIVE_QA_SERVICE: 'api']
-    addApiAllureCategories(mockParams, mockEnv)
+    addApiAllureCategories()
 }
 
 return this
