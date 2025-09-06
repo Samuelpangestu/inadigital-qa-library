@@ -177,13 +177,40 @@ def setupApiAllureReport(def params, def env) {
     // Setup environment properties
     setupApiAllureEnvironment(params, env)
 
-    // Add categories for better organization
-    addApiAllureCategories()
+    // Create WORKING categories (replace the broken ones)
+    def categoriesContent = '''[
+  {
+    "name": "🌐 External API Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*External API.*"
+  },
+  {
+    "name": "🏠 Internal API Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*Internal API.*"
+  },
+  {
+    "name": "📊 Data Services",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*(Data|data).*"
+  },
+  {
+    "name": "🚨 Failed Tests",
+    "matchedStatuses": ["failed", "broken"]
+  },
+  {
+    "name": "✅ Passed Tests",
+    "matchedStatuses": ["passed"]
+  }
+]'''
+
+    writeFile file: 'target/allure-results/categories.json', text: categoriesContent
+    echo "Added working Allure categories"
 
     // Generate allure.properties for better static serving
     generateAllureProperties()
 
-    echo "API Allure report setup completed"
+    echo "API Allure report setup completed with working categories"
 }
 
 /**
@@ -577,6 +604,65 @@ def examineTestFile() {
         echo "🔍 Full structure (first 100 lines):"
         head -100 "$FIRST_FILE"
     '''
+}
+
+/**
+ * Create working categories that will immediately show in Allure
+ * Add this method to allureUtils.groovy and call it instead
+ */
+def createImmediateWorkingCategories() {
+    echo "Creating immediate working categories based on test patterns..."
+
+    def categoriesContent = '''[
+  {
+    "name": "🔥 High Priority Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "🌐 External API Tests", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*External API.*"
+  },
+  {
+    "name": "🏠 Internal API Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
+    "messageRegex": ".*Internal API.*"
+  },
+  {
+    "name": "🏛️ INAGov Services",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*"
+  },
+  {
+    "name": "📊 Data Services",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*(Data|data).*"
+  },
+  {
+    "name": "🔗 BKN Integration", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*BKN.*"
+  },
+  {
+    "name": "🚨 Failed Tests",
+    "matchedStatuses": ["failed", "broken"]
+  },
+  {
+    "name": "✅ Passed Tests",
+    "matchedStatuses": ["passed"]
+  },
+  {
+    "name": "⏭️ Skipped Tests", 
+    "matchedStatuses": ["skipped"]
+  }
+]'''
+
+    // IMPORTANT: Write to target BEFORE allure generation
+    writeFile file: 'target/allure-results/categories.json', text: categoriesContent
+    echo "✅ Created working categories in target/allure-results/categories.json"
+
+    return categoriesContent
 }
 
 return this
