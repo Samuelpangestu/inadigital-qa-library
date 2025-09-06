@@ -20,7 +20,6 @@ final class TestExecutionConfig {
     ]
 
     static final int MAX_COMMAND_LENGTH = 32768  // Conservative limit for most systems
-    static final String TEMP_PROPERTIES_FILE = 'cucumber-execution.properties'
 }
 
 // =============================================================================
@@ -50,38 +49,34 @@ def estimateCommandLength(String baseCommand, String tag) {
 }
 
 /**
- * Executes tests using properties file approach to avoid long command lines
+ * Executes tests using optimized Maven settings for large test suites
  */
-def executeTestsWithPropertiesFile(String tag, def env) {
-    echo "🔧 Using properties file approach for large test suite: @${tag}"
-
-    // Create cucumber execution properties file
-    def propertiesContent = """
-# Cucumber execution configuration
-cucumber.filter.tags=@${tag}
-cucumber.plugin=pretty,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm
-cucumber.glue=inadigital.api.steps
-cucumber.publish.quiet=true
-cucumber.features=src/test/resources/features
-"""
-
-    writeFile file: TestExecutionConfig.TEMP_PROPERTIES_FILE, text: propertiesContent
+def executeTestsWithOptimizedSettings(String tag, def env) {
+    echo "🔧 Using optimized Maven execution for large test suite: @${tag}"
 
     try {
-        // Run tests with properties file
+        // Run tests with optimized JVM settings (Java 17 compatible)
         sh """
-            echo "📋 Created cucumber execution properties file"
-            cat ${TestExecutionConfig.TEMP_PROPERTIES_FILE}
+            echo "🚀 Executing tests with optimized Maven settings..."
             
-            echo "🚀 Executing tests with Maven using properties file approach..."
-            mvn test -Dcucumber.options="@src/test/resources/${TestExecutionConfig.TEMP_PROPERTIES_FILE}"
+            # Set optimized Maven options for large test suites (Java 17 compatible)
+            export MAVEN_OPTS="-Xmx4g -Xms1g -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC -XX:+UseStringDeduplication"
+            
+            # Run tests with extended timeout and optimized settings
+            timeout 7200s mvn test \\
+                -Dcucumber.filter.tags="@${tag}" \\
+                -Dcucumber.plugin="pretty,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \\
+                -Dcucumber.glue="inadigital.api.steps" \\
+                -Dcucumber.publish.quiet=true \\
+                -Dlarge.test.suite=true \\
+                -Dsurefire.reuseForks=false \\
+                -Dsurefire.forkCount=1 \\
+                -Dsurefire.argLine="-Xmx2g -Xms512m -XX:MetaspaceSize=256m" \\
+                -Dtest.timeout=7200
         """
     } catch (Exception e) {
-        echo "⚠️ Properties file approach failed, trying alternative method: ${e.getMessage()}"
+        echo "⚠️ Optimized execution failed, trying batch execution: ${e.getMessage()}"
         executeTestsWithBatchApproach(tag, env)
-    } finally {
-        // Cleanup properties file
-        sh "rm -f ${TestExecutionConfig.TEMP_PROPERTIES_FILE} || true"
     }
 }
 
@@ -110,7 +105,15 @@ def executeTestsWithBatchApproach(String tag, def env) {
 
             sh """
                 echo "🚀 Executing batch ${batchNumber} with tag: ${batchTag}"
-                mvn test -Dcucumber.filter.tags="${batchTag}" -Dtest.batch=${batchNumber}
+                
+                # Set optimized Maven options for batch execution
+                export MAVEN_OPTS="-Xmx2g -Xms512m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m"
+                
+                mvn test \\
+                    -Dcucumber.filter.tags="${batchTag}" \\
+                    -Dtest.batch=${batchNumber} \\
+                    -Dsurefire.reuseForks=true \\
+                    -Dsurefire.forkCount=1
             """
 
         } catch (Exception e) {
@@ -189,11 +192,11 @@ def executeTestsSafely(String tag, def env) {
         echo "📈 Large test suite detected for tag: @${normalizedTag}"
         echo "🔧 Using specialized execution approach to avoid command line limits"
 
-        // Try properties file approach first, then batch approach as fallback
+        // Try optimized execution first, then batch approach as fallback
         try {
-            executeTestsWithPropertiesFile(normalizedTag, env)
+            executeTestsWithOptimizedSettings(normalizedTag, env)
         } catch (Exception e) {
-            echo "⚠️ Properties file approach failed: ${e.getMessage()}"
+            echo "⚠️ Optimized execution failed: ${e.getMessage()}"
             echo "🔄 Falling back to batch execution approach"
             executeTestsWithBatchApproach(normalizedTag, env)
         }
@@ -210,6 +213,10 @@ def executeTestsStandard(String tag, def env) {
     try {
         sh """
             echo "🚀 Executing standard test run with tag: @${tag}"
+            
+            # Set standard Maven options
+            export MAVEN_OPTS="-Xmx2g -Xms512m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m"
+            
             mvn test -Dcucumber.filter.tags="@${tag}"
         """
     } catch (Exception e) {
@@ -229,11 +236,9 @@ def optimizeSystemForLargeTests(def env) {
     sh """
         echo "🔧 Optimizing system for large test execution..."
         
-        # Increase JVM heap size for Maven
-        export MAVEN_OPTS="\${MAVEN_OPTS:-} -Xmx2g -Xms1g"
-        
-        # Set system properties to handle large argument lists
-        export _JAVA_OPTIONS="\${_JAVA_OPTIONS:-} -Djava.awt.headless=true"
+        # Set Java 17 compatible JVM options
+        export MAVEN_OPTS="-Xmx2g -Xms1g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
+        export _JAVA_OPTIONS="-Djava.awt.headless=true"
         
         # Clean up any previous test artifacts
         rm -rf target/surefire-reports/* || true
@@ -242,6 +247,9 @@ def optimizeSystemForLargeTests(def env) {
         # Ensure target directories exist
         mkdir -p target/allure-results
         mkdir -p target/surefire-reports
+        
+        # Clean up any hanging Maven processes
+        pkill -f "maven" || true
         
         echo "✅ System optimization completed"
     """
@@ -254,12 +262,11 @@ def cleanupAfterLargeTests() {
     sh """
         echo "🧹 Cleaning up after large test execution..."
         
-        # Remove temporary files
-        rm -f ${TestExecutionConfig.TEMP_PROPERTIES_FILE} || true
-        rm -f cucumber-execution.properties || true
-        
         # Clean up any Maven daemon processes that might be hanging
         pkill -f "maven" || true
+        
+        # Clean temporary Maven files
+        rm -rf target/.maven-* || true
         
         echo "✅ Cleanup completed"
     """
@@ -278,11 +285,14 @@ def monitorTestProgress(String tag) {
     sh """
         echo "📈 Test execution monitoring:"
         echo "Current time: \$(date)"
-        echo "Available memory: \$(free -h | grep '^Mem:' | awk '{print \$7}')"
-        echo "Disk usage: \$(df -h . | tail -1 | awk '{print \$5}')"
+        echo "Available memory: \$(free -h | grep '^Mem:' | awk '{print \$7}' || echo 'N/A')"
+        echo "Disk usage: \$(df -h . | tail -1 | awk '{print \$5}' || echo 'N/A')"
         
         # Check for any running Maven processes
         ps aux | grep -i maven | grep -v grep || echo "No Maven processes found"
+        
+        # Check Java version for compatibility
+        java -version || echo "Java not found in PATH"
     """
 }
 
@@ -296,7 +306,7 @@ def generateExecutionSummary(String tag, def env) {
 # Test Execution Summary
 
 **Tag:** @${tag}
-**Execution Type:** ${isLargeTestSuite(tag) ? 'Large Test Suite (Batch/Properties)' : 'Standard'}
+**Execution Type:** ${isLargeTestSuite(tag) ? 'Large Test Suite (Optimized/Batch)' : 'Standard'}
 **Build Number:** ${env.BUILD_NUMBER}
 **Environment:** ${env.TARGET_ENV ?: 'dev'}
 **Timestamp:** ${new Date().format("yyyy-MM-dd HH:mm:ss")}
@@ -308,6 +318,7 @@ def generateExecutionSummary(String tag, def env) {
 ## System Information
 - **Jenkins Workspace:** ${env.WORKSPACE}
 - **Agent:** ${env.NODE_NAME ?: 'unknown'}
+- **Java Version:** Compatible with Java 17
 """
 
     writeFile file: 'execution-summary.md', text: summaryContent
@@ -343,6 +354,25 @@ def runTestsSafely(String tag, def env) {
         // Always cleanup
         cleanupAfterLargeTests()
     }
+}
+
+/**
+ * Simple method for direct Maven execution with optimized settings
+ */
+def runTestsWithOptimizedMaven(String tag, def env) {
+    echo "🚀 Running tests with optimized Maven settings for tag: @${tag}"
+
+    sh """
+        # Set Java 17 compatible Maven options
+        export MAVEN_OPTS="-Xmx4g -Xms1g -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
+        
+        # Run tests with timeout protection
+        timeout 7200s mvn test \\
+            -Dcucumber.filter.tags="@${tag}" \\
+            -Dlarge.test.suite=true \\
+            -Dsurefire.reuseForks=false \\
+            -Dsurefire.forkCount=1
+    """
 }
 
 return this
