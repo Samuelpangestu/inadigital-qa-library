@@ -56,32 +56,37 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "Internal API - List Subkategori",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal API - List Subkategori.*"
-  },
-  {
-    "name": "External API",
+    "name": "External API Tests",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
     "messageRegex": ".*External API.*"
   },
   {
-    "name": "All Internal API Tests",
+    "name": "Internal API Tests",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
     "messageRegex": ".*Internal API.*"
   },
   {
-    "name": "Passed Tests",
-    "matchedStatuses": ["passed"]
+    "name": "Failed External API",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*External API.*"
+  },
+  {
+    "name": "Failed Internal API",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*Internal API.*"
   },
   {
     "name": "Failed Tests",
     "matchedStatuses": ["failed"]
+  },
+  {
+    "name": "Passed Tests",
+    "matchedStatuses": ["passed"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added specific Internal API categories"
+    echo "Added prioritized External/Internal API categories"
 }
 
 /**
