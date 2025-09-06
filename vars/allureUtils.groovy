@@ -58,22 +58,12 @@ def addApiAllureCategories() {
   {
     "name": "External API Tests",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*External API.*"
+    "traceRegex": ".*External API.*"
   },
   {
     "name": "Internal API Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal API.*"
-  },
-  {
-    "name": "Failed External API",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*External API.*"
-  },
-  {
-    "name": "Failed Internal API",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*Internal API.*"
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
+    "traceRegex": ".*Internal API.*"
   },
   {
     "name": "Failed Tests",
@@ -86,7 +76,7 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added prioritized External/Internal API categories"
+    echo "Added traceRegex categories"
 }
 
 /**
