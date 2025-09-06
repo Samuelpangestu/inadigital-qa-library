@@ -372,91 +372,92 @@ def addAllureCategories() {
 }
 
 /**
- * Analyze test results and create meaningful categories
- */
-/**
- * Fixed priority-based categories with correct grep patterns
+ * Working solution for creating categories based on actual test data
  * Add this to your allureUtils.groovy
  */
-def createPriorityBasedCategories() {
-    echo "🔍 Analyzing test results for priority-based categorization..."
+def createWorkingCategories() {
+    echo "🔍 Creating categories based on actual test data..."
 
     def categories = []
+    def testCounts = [:]
 
     try {
-        // Enhanced analysis with correct patterns
-        def tagAnalysis = sh(
+        // First, let's examine one file to understand the actual structure
+        def sampleAnalysis = sh(
                 script: '''
-                cd allure-report/data/test-cases 2>/dev/null || cd target/allure-results 2>/dev/null || exit 0
+                cd allure-report/data/test-cases 2>/dev/null || exit 0
                 
-                # Count tests by priority tags (fixed patterns)
-                HIGH_COUNT=$(grep -l '"value":"high"' *.json 2>/dev/null | wc -l)
-                MEDIUM_COUNT=$(grep -l '"value":"medium"' *.json 2>/dev/null | wc -l) 
-                LOW_COUNT=$(grep -l '"value":"low"' *.json 2>/dev/null | wc -l)
-                
-                # Count by service tags
-                INAGOV_COUNT=$(grep -l '"value":"inagov"' *.json 2>/dev/null | wc -l)
-                INAPAS_COUNT=$(grep -l '"value":"inapas"' *.json 2>/dev/null | wc -l)
-                PERURIID_COUNT=$(grep -l '"value":"peruriid"' *.json 2>/dev/null | wc -l)
-                SBU_COUNT=$(grep -l '"value":"sbu"' *.json 2>/dev/null | wc -l)
-                
-                # Count by API type
-                EXTERNAL_COUNT=$(grep -l '"value":"external-api"' *.json 2>/dev/null | wc -l)
-                INTERNAL_COUNT=$(grep -l '"value":"internal-api"' *.json 2>/dev/null | wc -l)
-                
-                # Count by test type
-                SMOKE_COUNT=$(grep -l '"value":"smoke"' *.json 2>/dev/null | wc -l)
-                REGRESSION_COUNT=$(grep -l '"value":"regression' *.json 2>/dev/null | wc -l)
-                
-                # Count by status from test names
-                TOTAL_COUNT=$(ls *.json 2>/dev/null | wc -l)
-                FAILED_COUNT=$(grep -l '"status" : "failed"' *.json 2>/dev/null | wc -l)
-                PASSED_COUNT=$(grep -l '"status" : "passed"' *.json 2>/dev/null | wc -l)
-                BROKEN_COUNT=$(grep -l '"status" : "broken"' *.json 2>/dev/null | wc -l)
-                
-                echo "HIGH=$HIGH_COUNT,MEDIUM=$MEDIUM_COUNT,LOW=$LOW_COUNT,INAGOV=$INAGOV_COUNT,INAPAS=$INAPAS_COUNT,PERURIID=$PERURIID_COUNT,SBU=$SBU_COUNT,EXTERNAL=$EXTERNAL_COUNT,INTERNAL=$INTERNAL_COUNT,SMOKE=$SMOKE_COUNT,REGRESSION=$REGRESSION_COUNT,TOTAL=$TOTAL_COUNT,FAILED=$FAILED_COUNT,PASSED=$PASSED_COUNT,BROKEN=$BROKEN_COUNT"
+                # Get the actual structure of one file
+                if [ -f "*.json" ]; then
+                    echo "=== SAMPLE FILE STRUCTURE ==="
+                    ls *.json | head -1 | xargs cat | jq '.' 2>/dev/null || cat `ls *.json | head -1` | head -50
+                fi
             ''',
                 returnStdout: true
         ).trim()
 
-        echo "📊 Tag Analysis: ${tagAnalysis}"
+        echo "📋 Sample file structure: ${sampleAnalysis}"
 
-        // Parse the counts
+        // Extract actual tag data using a more robust approach
+        def tagData = sh(
+                script: '''
+                cd allure-report/data/test-cases 2>/dev/null || exit 0
+                
+                # Count actual patterns that exist in your files
+                TOTAL_FILES=$(ls *.json 2>/dev/null | wc -l)
+                
+                # Count by test names (which we can see from your JSON example)
+                EXTERNAL_API_COUNT=$(grep -l "External API" *.json 2>/dev/null | wc -l)
+                INTERNAL_API_COUNT=$(grep -l "Internal API" *.json 2>/dev/null | wc -l)
+                
+                # Count by status
+                FAILED_COUNT=$(grep -l '"status" : "failed"' *.json 2>/dev/null | wc -l)
+                PASSED_COUNT=$(grep -l '"status" : "passed"' *.json 2>/dev/null | wc -l)
+                BROKEN_COUNT=$(grep -l '"status" : "broken"' *.json 2>/dev/null | wc -l)
+                
+                # Look for actual tag patterns in labels array
+                INAGOV_COUNT=$(grep -l '"value":"inagov"' *.json 2>/dev/null | wc -l)
+                BKN_COUNT=$(grep -l '"value":"bkn"' *.json 2>/dev/null | wc -l)
+                PERSONAL_DATA_COUNT=$(grep -l '"value":"personal-data"' *.json 2>/dev/null | wc -l)
+                STAGING_COUNT=$(grep -l '"value":"staging"' *.json 2>/dev/null | wc -l)
+                REGRESSION_COUNT=$(grep -l '"value":"regression' *.json 2>/dev/null | wc -l)
+                
+                echo "TOTAL=$TOTAL_FILES,EXTERNAL_API=$EXTERNAL_API_COUNT,INTERNAL_API=$INTERNAL_API_COUNT,FAILED=$FAILED_COUNT,PASSED=$PASSED_COUNT,BROKEN=$BROKEN_COUNT,INAGOV=$INAGOV_COUNT,BKN=$BKN_COUNT,PERSONAL_DATA=$PERSONAL_DATA_COUNT,STAGING=$STAGING_COUNT,REGRESSION=$REGRESSION_COUNT"
+            ''',
+                returnStdout: true
+        ).trim()
+
+        echo "📊 Actual tag analysis: ${tagData}"
+
+        // Parse the actual counts
         def counts = [:]
-        tagAnalysis.split(',').each { pair ->
-            def (key, value) = pair.split('=')
-            counts[key] = value as Integer
+        tagData.split(',').each { pair ->
+            def parts = pair.split('=')
+            if (parts.length == 2) {
+                counts[parts[0]] = parts[1] as Integer
+            }
         }
 
-        // Create categories based on actual data found
+        // Create categories based on what actually exists in your tests
 
-        // Priority Categories (if we have priority tags)
-        if (counts.HIGH > 0) {
+        // API Type Categories (based on test names)
+        if (counts.EXTERNAL_API > 0) {
             categories.add([
-                    name: "🔥 High Priority Tests (${counts.HIGH})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
-            ])
-            categories.add([
-                    name: "🚨 High Priority Failures",
-                    matchedStatuses: ["failed", "broken"]
-            ])
-        }
-
-        if (counts.MEDIUM > 0) {
-            categories.add([
-                    name: "⚡ Medium Priority Tests (${counts.MEDIUM})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
+                    name: "🌐 External API Tests (${counts.EXTERNAL_API})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
+                    messageRegex: ".*External API.*"
             ])
         }
 
-        if (counts.LOW > 0) {
+        if (counts.INTERNAL_API > 0) {
             categories.add([
-                    name: "📋 Low Priority Tests (${counts.LOW})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
+                    name: "🏠 Internal API Tests (${counts.INTERNAL_API})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
+                    messageRegex: ".*Internal API.*"
             ])
         }
 
-        // Service Categories
+        // Service Categories (based on actual tags found)
         if (counts.INAGOV > 0) {
             categories.add([
                     name: "🏛️ INAGov Services (${counts.INAGOV})",
@@ -464,48 +465,16 @@ def createPriorityBasedCategories() {
             ])
         }
 
-        if (counts.INAPAS > 0) {
+        if (counts.BKN > 0) {
             categories.add([
-                    name: "🎫 INAPas Services (${counts.INAPAS})",
+                    name: "🔗 BKN Integration (${counts.BKN})",
                     matchedStatuses: ["passed", "failed", "broken", "skipped"]
             ])
         }
 
-        if (counts.PERURIID > 0) {
+        if (counts.PERSONAL_DATA > 0) {
             categories.add([
-                    name: "🆔 PeruriID Services (${counts.PERURIID})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
-            ])
-        }
-
-        if (counts.SBU > 0) {
-            categories.add([
-                    name: "🏢 SBU Services (${counts.SBU})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
-            ])
-        }
-
-        // API Type Categories
-        if (counts.EXTERNAL > 0) {
-            categories.add([
-                    name: "🌐 External API Tests (${counts.EXTERNAL})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                    traceRegex: ".*External API.*"
-            ])
-        }
-
-        if (counts.INTERNAL > 0) {
-            categories.add([
-                    name: "🏠 Internal API Tests (${counts.INTERNAL})",
-                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
-                    traceRegex: ".*Internal API.*"
-            ])
-        }
-
-        // Test Type Categories
-        if (counts.SMOKE > 0) {
-            categories.add([
-                    name: "💨 Smoke Tests (${counts.SMOKE})",
+                    name: "📊 Personal Data APIs (${counts.PERSONAL_DATA})",
                     matchedStatuses: ["passed", "failed", "broken", "skipped"]
             ])
         }
@@ -517,18 +486,25 @@ def createPriorityBasedCategories() {
             ])
         }
 
+        if (counts.STAGING > 0) {
+            categories.add([
+                    name: "🎭 Staging Environment (${counts.STAGING})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
+            ])
+        }
+
     } catch (Exception e) {
-        echo "⚠️ Error in analysis: ${e.getMessage()}, using fallback categories"
+        echo "⚠️ Error in enhanced analysis: ${e.getMessage()}"
     }
 
-    // Always add these status-based categories
+    // Always include these status-based categories
     categories.addAll([
             [
-                    name: "🚨 All Failed Tests",
+                    name: "🚨 Failed Tests",
                     matchedStatuses: ["failed", "broken"]
             ],
             [
-                    name: "✅ All Passed Tests",
+                    name: "✅ Passed Tests",
                     matchedStatuses: ["passed"]
             ],
             [
@@ -536,65 +512,70 @@ def createPriorityBasedCategories() {
                     matchedStatuses: ["skipped"]
             ],
             [
-                    name: "🔍 External API by Name",
+                    name: "🌐 External APIs",
                     matchedStatuses: ["passed", "failed", "broken", "skipped"],
                     messageRegex: ".*External API.*"
             ],
             [
-                    name: "🏠 Internal API by Name",
+                    name: "🏠 Internal APIs",
                     matchedStatuses: ["passed", "failed", "broken", "skipped"],
                     messageRegex: ".*Internal API.*"
+            ],
+            [
+                    name: "📊 Data Services",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
+                    messageRegex: ".*(Data|data).*"
             ]
     ])
 
-    // Write categories to the correct location
+    // Write categories to both locations
     def categoriesJson = groovy.json.JsonOutput.toJson(categories)
 
-    // Try multiple locations
-    def locations = [
-            'allure-report/data/categories.json',
-            'target/allure-results/categories.json'
-    ]
+    // Write to target (for next run)
+    writeFile file: 'target/allure-results/categories.json', text: categoriesJson
 
-    locations.each { location ->
-        try {
-            writeFile file: location, text: categoriesJson
-            echo "✅ Created categories at: ${location}"
-        } catch (Exception e) {
-            echo "⚠️ Could not write to ${location}: ${e.getMessage()}"
-        }
+    // Write to allure-report (for current report)
+    writeFile file: 'allure-report/data/categories.json', text: categoriesJson
+
+    echo "✅ Created ${categories.size()} working categories"
+
+    // Also let's examine what the current categories file contains
+    if (fileExists('allure-report/widgets/categories.json')) {
+        def widgetContent = readFile('allure-report/widgets/categories.json')
+        echo "📋 Current widget categories: ${widgetContent}"
     }
 
-    echo "📊 Generated ${categories.size()} categories based on analysis"
+    return categories
 }
 
 /**
- * Enhanced debug method to check what tags actually exist
+ * Debug method to see what's actually in a test file
  */
-def debugTestStructure() {
+def examineTestFile() {
     sh '''
-        echo "=== DETAILED TAG ANALYSIS ==="
+        echo "=== EXAMINING ACTUAL TEST FILE CONTENT ==="
         
-        if [ -d "allure-report/data/test-cases" ]; then
-            cd allure-report/data/test-cases
-            
-            echo "📋 Checking actual tag patterns in files:"
-            
-            # Show a sample of what tags look like
-            echo "🔍 Sample tag structure from first file:"
-            head -50 *.json | grep -A2 -B2 '"name":"tag"' | head -20
-            
-            echo ""
-            echo "📊 All unique tag values found:"
-            grep -h '"name":"tag"' *.json | sed 's/.*"value":"//' | sed 's/".*//' | sort | uniq -c | sort -nr
-            
-            echo ""
-            echo "🏷️ All unique label names:"
-            grep -h '"name":' *.json | sed 's/.*"name":"//' | sed 's/".*//' | sort | uniq -c | sort -nr
-            
-        else
-            echo "❌ No test cases found"
-        fi
+        cd allure-report/data/test-cases 2>/dev/null || exit 0
+        
+        # Get the first file and show its content
+        FIRST_FILE=$(ls *.json | head -1)
+        echo "📁 Examining file: $FIRST_FILE"
+        echo ""
+        
+        echo "🏷️ Looking for labels section:"
+        grep -A 20 '"labels"' "$FIRST_FILE" || echo "No labels section found"
+        echo ""
+        
+        echo "📝 Test name:"
+        grep '"name"' "$FIRST_FILE" | head -3
+        echo ""
+        
+        echo "📊 Status:"
+        grep '"status"' "$FIRST_FILE"
+        echo ""
+        
+        echo "🔍 Full structure (first 100 lines):"
+        head -100 "$FIRST_FILE"
     '''
 }
 
