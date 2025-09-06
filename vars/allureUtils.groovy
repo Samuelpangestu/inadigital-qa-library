@@ -56,42 +56,71 @@ Java_Version=${getJavaVersion()}
 /**
  * Add categories for test results with priority-based categorization
  */
+/**
+ * Add categories for test results with priority-based categorization
+ * Enhanced version for better test organization
+ */
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "🔥 High Priority Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@high.*"
+    "name": "🔥 Critical Priority - Failed",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*🔥.*\\[HIGH\\].*"
   },
   {
-    "name": "⚡ Medium Priority Tests", 
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@medium.*"
+    "name": "🔥 Critical Priority - Passed",
+    "matchedStatuses": ["passed"],
+    "messageRegex": ".*🔥.*\\[HIGH\\].*"
   },
   {
-    "name": "📋 Low Priority Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
-    "messageRegex": ".*@low.*"
+    "name": "⚡ Medium Priority - Failed", 
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*⚡.*\\[MEDIUM\\].*"
   },
   {
-    "name": "💨 Smoke Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@smoke.*"
+    "name": "⚡ Medium Priority - Passed",
+    "matchedStatuses": ["passed"],
+    "messageRegex": ".*⚡.*\\[MEDIUM\\].*"
   },
   {
-    "name": "🔄 Regression Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@regression.*"
+    "name": "📋 Low Priority - Failed",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*📋.*\\[LOW\\].*"
   },
   {
-    "name": "✅ Positive Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@positive.*"
+    "name": "📋 Low Priority - Passed",
+    "matchedStatuses": ["passed"],
+    "messageRegex": ".*📋.*\\[LOW\\].*"
   },
   {
-    "name": "❌ Negative Tests", 
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*@negative.*"
+    "name": "💨 Critical Smoke Tests",
+    "matchedStatuses": ["passed", "failed", "broken"],
+    "messageRegex": ".*🔥.*smoke.*"
+  },
+  {
+    "name": "🔄 High Priority Regression",
+    "matchedStatuses": ["passed", "failed", "broken"], 
+    "messageRegex": ".*🔥.*regression.*"
+  },
+  {
+    "name": "🏛️ INAGov - Critical Issues",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(🔥.*inagov|inagov.*🔥).*"
+  },
+  {
+    "name": "🎫 INAPas - Critical Issues",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(🔥.*inapas|inapas.*🔥).*"
+  },
+  {
+    "name": "🆔 PeruriID - Critical Issues",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(🔥.*peruriid|peruriid.*🔥).*"
+  },
+  {
+    "name": "🏢 SBU - Critical Issues",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(🔥.*sbu|sbu.*🔥).*"
   },
   {
     "name": "External API",
@@ -129,21 +158,13 @@ def addApiAllureCategories() {
     "messageRegex": ".*(timeout|connection|network).*"
   },
   {
-    "name": "Failed Tests",
-    "matchedStatuses": ["failed"]
-  },
-  {
-    "name": "Broken Tests", 
-    "matchedStatuses": ["broken"]
-  },
-  {
     "name": "Skipped Tests",
     "matchedStatuses": ["skipped"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with priority-based categorization"
+    echo "Added enhanced Allure categories with priority-based categorization"
 }
 
 /**
