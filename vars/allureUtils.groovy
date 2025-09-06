@@ -56,48 +56,32 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "List Subkategori Tests",
+    "name": "Internal API - List Subkategori",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*List Subkategori.*"
+    "messageRegex": ".*Internal API - List Subkategori.*"
   },
   {
-    "name": "Internal API Tests",
+    "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal.*"
+    "messageRegex": ".*External API.*"
   },
   {
-    "name": "All Passed Tests",
+    "name": "All Internal API Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*Internal API.*"
+  },
+  {
+    "name": "Passed Tests",
     "matchedStatuses": ["passed"]
   },
   {
-    "name": "All Failed Tests",
+    "name": "Failed Tests",
     "matchedStatuses": ["failed"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added simple test categories"
-
-    sh '''
-    echo "=== MANUAL TEST NAME EXTRACTION ==="
-    FIRST_FILE=$(ls target/allure-results/*-result.json | head -1)
-    
-    if [ -f "$FIRST_FILE" ]; then
-        echo "File: $FIRST_FILE"
-        echo "Main test name:"
-        sed -n 's/.*"name":"\\([^"]*\\)".*/\\1/p' "$FIRST_FILE" | head -1
-        
-        echo "All name fields:"
-        sed -n 's/.*"name":"\\([^"]*\\)".*/\\1/p' "$FIRST_FILE" | head -5
-        
-        echo "Checking for Internal API text:"
-        cat "$FIRST_FILE" | grep "Internal API" || echo "Internal API not found"
-        
-        echo "File content sample:"
-        head -c 300 "$FIRST_FILE"
-    fi
-    echo "=== END MANUAL EXTRACTION ==="
-'''
+    echo "Added specific Internal API categories"
 }
 
 /**
