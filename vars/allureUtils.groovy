@@ -54,29 +54,34 @@ Java_Version=${getJavaVersion()}
  * Add categories for test results - restored to original working configuration
  */
 def addApiAllureCategories() {
+    // Ultra minimal test - if this doesn't work, categories are broken
     def categoriesContent = '''[
   {
-    "name": "External API Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*External API.*"
-  },
-  {
-    "name": "Internal API Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
-    "traceRegex": ".*Internal API.*"
-  },
-  {
-    "name": "Failed Tests",
+    "name": "All Failed Tests",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Passed Tests",
+    "name": "All Passed Tests", 
     "matchedStatuses": ["passed"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added traceRegex categories"
+    echo "Added minimal categories test"
+
+    // Additional debugging
+    sh '''
+        echo "=== CATEGORIES DEBUG ==="
+        echo "File written, checking Allure version compatibility..."
+        
+        # Check what version of Allure we're using
+        allure --version 2>/dev/null || echo "Allure version not detectable"
+        
+        # Validate JSON syntax
+        python3 -m json.tool target/allure-results/categories.json > /dev/null 2>&1 && echo "JSON syntax valid" || echo "JSON syntax invalid"
+        
+        echo "=== END DEBUG ==="
+    '''
 }
 
 /**
