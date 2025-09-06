@@ -54,69 +54,50 @@ Java_Version=${getJavaVersion()}
  * Add categories for test results - restored to original working configuration
  */
 def addApiAllureCategories() {
-    // Since you updated your scenario to "Internal API - List Subkategori"
-    // this should definitely work with messageRegex
     def categoriesContent = '''[
+  {
+    "name": "List Subkategori Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*List Subkategori.*"
+  },
   {
     "name": "Internal API Tests",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*Internal API.*"
+    "messageRegex": ".*Internal.*"
   },
   {
-    "name": "External API Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*External API.*"
-  },
-  {
-    "name": "Authentication Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(401|403|unauthorized|forbidden).*"
-  },
-  {
-    "name": "Data Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(400|404|validation|schema).*"
-  },
-  {
-    "name": "Server Issues",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(500|502|503|504).*"
-  },
-  {
-    "name": "Failed Tests",
-    "matchedStatuses": ["failed"]
-  },
-  {
-    "name": "Passed Tests",
+    "name": "All Passed Tests",
     "matchedStatuses": ["passed"]
   },
   {
-    "name": "Broken Tests",
-    "matchedStatuses": ["broken"]
-  },
-  {
-    "name": "Skipped Tests",
-    "matchedStatuses": ["skipped"]
+    "name": "All Failed Tests",
+    "matchedStatuses": ["failed"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with messageRegex for API types"
+    echo "Added simple test categories"
 
-    // Fixed debug script
     sh '''
-        echo "=== BETTER TEST NAME DEBUG ==="
-        # Look at actual test structure - use first result file
-        FIRST_FILE=$(ls target/allure-results/*-result.json | head -1)
-        if [ -f "$FIRST_FILE" ]; then
-            echo "Checking file: $FIRST_FILE"
-            echo "Test name field:"
-            grep -o '"name":"[^"]*"' "$FIRST_FILE" | grep -v '"name":"tag"' | grep -v '"name":"host"' | head -3
-            echo "Looking for Internal/External in content:"
-            grep -i "internal\\|external" "$FIRST_FILE" || echo "No Internal/External found in test content"
-        fi
-        echo "=== END BETTER DEBUG ==="
-    '''
+    echo "=== MANUAL TEST NAME EXTRACTION ==="
+    FIRST_FILE=$(ls target/allure-results/*-result.json | head -1)
+    
+    if [ -f "$FIRST_FILE" ]; then
+        echo "File: $FIRST_FILE"
+        echo "Main test name:"
+        sed -n 's/.*"name":"\\([^"]*\\)".*/\\1/p' "$FIRST_FILE" | head -1
+        
+        echo "All name fields:"
+        sed -n 's/.*"name":"\\([^"]*\\)".*/\\1/p' "$FIRST_FILE" | head -5
+        
+        echo "Checking for Internal API text:"
+        cat "$FIRST_FILE" | grep "Internal API" || echo "Internal API not found"
+        
+        echo "File content sample:"
+        head -c 300 "$FIRST_FILE"
+    fi
+    echo "=== END MANUAL EXTRACTION ==="
+'''
 }
 
 /**
