@@ -54,34 +54,58 @@ Java_Version=${getJavaVersion()}
  * Add categories for test results - restored to original working configuration
  */
 def addApiAllureCategories() {
-    // Ultra minimal test - if this doesn't work, categories are broken
     def categoriesContent = '''[
   {
-    "name": "All Failed Tests",
+    "name": "External API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*External API.*"
+  },
+  {
+    "name": "Internal API",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "traceRegex": ".*Internal API.*"
+  },
+  {
+    "name": "Read timed out",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
+  },
+  {
+    "name": "Authentication Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(401|403|unauthorized|forbidden).*"
+  },
+  {
+    "name": "Data Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(400|404|validation|schema).*"
+  },
+  {
+    "name": "Server Issues",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(500|502|503|504).*"
+  },
+  {
+    "name": "Infrastructure Issues",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(timeout|connection|network).*"
+  },
+  {
+    "name": "Failed API Tests",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "All Passed Tests", 
-    "matchedStatuses": ["passed"]
+    "name": "Broken API Tests", 
+    "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Skipped Tests",
+    "matchedStatuses": ["skipped"]
   }
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added minimal categories test"
-
-    // Additional debugging
-    sh '''
-        echo "=== CATEGORIES DEBUG ==="
-        echo "File written, checking Allure version compatibility..."
-        
-        # Check what version of Allure we're using
-        allure --version 2>/dev/null || echo "Allure version not detectable"
-        
-        # Validate JSON syntax
-        python3 -m json.tool target/allure-results/categories.json > /dev/null 2>&1 && echo "JSON syntax valid" || echo "JSON syntax invalid"
-        
-        echo "=== END DEBUG ==="
-    '''
+    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
