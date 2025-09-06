@@ -98,44 +98,44 @@ def buildTagBasedCategories(String currentTag) {
     categories.add([
             name: "External API Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@external-api.*"
+            messageRegex: ".*@external-api.*"
     ])
 
     categories.add([
             name: "Internal API Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@internal-api.*"
+            messageRegex: ".*@internal-api.*"
     ])
 
     // Test Type Categories
     categories.add([
             name: "Login Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@login.*"
+            messageRegex: ".*@login.*"
     ])
 
     categories.add([
             name: "Smoke Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@smoke.*"
+            messageRegex: ".*@smoke.*"
     ])
 
     categories.add([
             name: "Regression Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@regression.*"
+            messageRegex: ".*@regression.*"
     ])
 
     categories.add([
             name: "Positive Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@positive.*"
+            messageRegex: ".*@positive.*"
     ])
 
     categories.add([
             name: "Negative Tests",
             matchedStatuses: ["passed", "failed", "broken", "skipped"],
-            traceRegex: ".*@negative.*"
+            messageRegex: ".*@negative.*"
     ])
 
     // Service-specific Categories (based on current tag)
