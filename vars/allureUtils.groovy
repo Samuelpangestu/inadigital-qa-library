@@ -53,8 +53,46 @@ Java_Version=${getJavaVersion()}
 /**
  * Add categories for test results - restored to original working configuration
  */
+/**
+ * Add categories for test results with priority-based categorization
+ */
 def addApiAllureCategories() {
     def categoriesContent = '''[
+  {
+    "name": "🔥 High Priority Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@high.*"
+  },
+  {
+    "name": "⚡ Medium Priority Tests", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@medium.*"
+  },
+  {
+    "name": "📋 Low Priority Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
+    "messageRegex": ".*@low.*"
+  },
+  {
+    "name": "💨 Smoke Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@smoke.*"
+  },
+  {
+    "name": "🔄 Regression Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@regression.*"
+  },
+  {
+    "name": "✅ Positive Tests",
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@positive.*"
+  },
+  {
+    "name": "❌ Negative Tests", 
+    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
+    "messageRegex": ".*@negative.*"
+  },
   {
     "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
@@ -91,11 +129,11 @@ def addApiAllureCategories() {
     "messageRegex": ".*(timeout|connection|network).*"
   },
   {
-    "name": "Failed API Tests",
+    "name": "Failed Tests",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Broken API Tests", 
+    "name": "Broken Tests", 
     "matchedStatuses": ["broken"]
   },
   {
@@ -105,7 +143,7 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with External/Internal API support"
+    echo "Added Allure categories with priority-based categorization"
 }
 
 /**
