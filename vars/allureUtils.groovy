@@ -371,4 +371,101 @@ def addAllureCategories() {
     addApiAllureCategories()
 }
 
+/**
+ * Analyze test results and create meaningful categories
+ */
+def createPriorityBasedCategories() {
+    echo "🔍 Analyzing test results for priority-based categorization..."
+
+    def categories = []
+
+    try {
+        // Simple approach: create categories based on known patterns
+        def tagAnalysis = sh(
+                script: """
+                cd allure-report/data/test-cases 2>/dev/null || cd target/allure-results 2>/dev/null || exit 0
+                
+                # Count tests by priority tags
+                HIGH_COUNT=\$(grep -l '"value":"high"' *.json 2>/dev/null | wc -l)
+                MEDIUM_COUNT=\$(grep -l '"value":"medium"' *.json 2>/dev/null | wc -l) 
+                LOW_COUNT=\$(grep -l '"value":"low"' *.json 2>/dev/null | wc -l)
+                
+                # Count by service
+                INAGOV_COUNT=\$(grep -l '"value":"inagov"' *.json 2>/dev/null | wc -l)
+                EXTERNAL_COUNT=\$(grep -l '"value":"external-api"' *.json 2>/dev/null | wc -l)
+                INTERNAL_COUNT=\$(grep -l '"value":"internal-api"' *.json 2>/dev/null | wc -l)
+                
+                echo "HIGH=\$HIGH_COUNT,MEDIUM=\$MEDIUM_COUNT,LOW=\$LOW_COUNT,INAGOV=\$INAGOV_COUNT,EXTERNAL=\$EXTERNAL_COUNT,INTERNAL=\$INTERNAL_COUNT"
+            """,
+                returnStdout: true
+        ).trim()
+
+        echo "📊 Tag Analysis: ${tagAnalysis}"
+
+        // Parse the counts
+        def counts = [:]
+        tagAnalysis.split(',').each { pair ->
+            def (key, value) = pair.split('=')
+            counts[key] = value as Integer
+        }
+
+        // Create priority categories with counts
+        if (counts.HIGH > 0) {
+            categories.add([
+                    name: "🔥 High Priority Tests (${counts.HIGH})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
+            ])
+        }
+
+        if (counts.EXTERNAL > 0) {
+            categories.add([
+                    name: "🌐 External API Tests (${counts.EXTERNAL})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
+                    traceRegex: ".*External API.*"
+            ])
+        }
+
+        if (counts.INTERNAL > 0) {
+            categories.add([
+                    name: "🏠 Internal API Tests (${counts.INTERNAL})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"],
+                    traceRegex: ".*Internal API.*"
+            ])
+        }
+
+        if (counts.INAGOV > 0) {
+            categories.add([
+                    name: "🏛️ INAGov Services (${counts.INAGOV})",
+                    matchedStatuses: ["passed", "failed", "broken", "skipped"]
+            ])
+        }
+
+    } catch (Exception e) {
+        echo "⚠️ Error in analysis: ${e.getMessage()}, using default categories"
+    }
+
+    // Add default categories
+    categories.addAll([
+            [
+                    name: "🚨 All Failed Tests",
+                    matchedStatuses: ["failed", "broken"]
+            ],
+            [
+                    name: "✅ All Passed Tests",
+                    matchedStatuses: ["passed"]
+            ],
+            [
+                    name: "⏭️ Skipped Tests",
+                    matchedStatuses: ["skipped"]
+            ]
+    ])
+
+    // Write the categories
+    def categoriesJson = groovy.json.JsonOutput.toJson(categories)
+    def targetFile = fileExists('allure-report/data') ? 'allure-report/data/categories.json' : 'target/allure-results/categories.json'
+
+    writeFile file: targetFile, text: categoriesJson
+    echo "✅ Created priority-based categories at: ${targetFile}"
+}
+
 return this
