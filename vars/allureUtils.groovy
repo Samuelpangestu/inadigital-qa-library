@@ -1,8 +1,8 @@
 #!/usr/bin/env groovy
 
 /**
- * Allure Utilities - Enhanced with Tag-Based Categorization
- * Centralized Allure environment and category management with long-term strategy
+ * Allure Utilities - Complete API & Web Support
+ * Centralized Allure environment and category management
  */
 
 // =============================================================================
@@ -44,116 +44,29 @@ Sheets=${sheets}
 Jenkins_Job=${env.JOB_NAME ?: 'qa-api-automation'}
 Maven_Version=${getMavenVersion()}
 Java_Version=${getJavaVersion()}
-Categorization=Tag-Based
-AllureStrategy=Long-Term-Hybrid
 """
 
     writeFile file: 'target/allure-results/environment.properties', text: envContent
-    echo "Set enhanced Allure environment properties for API tests: ${targetEnv}, ${tag}, ${serviceName}"
+    echo "Set Allure environment properties for API tests: ${targetEnv}, ${tag}, ${serviceName}"
 }
 
 /**
- * Add enhanced categories for test results with tag-based categorization
+ * Add categories for test results - restored to original working configuration
  */
-def addApiAllureCategoriesEnhanced() {
+def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "Critical Failures",
-    "matchedStatuses": ["failed", "broken"],
-    "messageRegex": ".*(severity:critical|@critical|@high|@p1).*"
-  },
-  {
-    "name": "Critical Smoke Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(severity:critical|@critical|@high).*(@smoke).*"
-  },
-  {
-    "name": "High Priority Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(severity:critical|@critical|@high|@p1).*"
-  },
-  {
-    "name": "Medium Priority Tests", 
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(severity:normal|@medium|@normal|@p2).*"
-  },
-  {
-    "name": "Low Priority Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"], 
-    "messageRegex": ".*(severity:minor|@low|@minor|@p3).*"
-  },
-  {
-    "name": "Smoke Test Failures",
-    "matchedStatuses": ["failed", "broken"],
-    "messageRegex": ".*@smoke.*"
-  },
-  {
-    "name": "Smoke Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@smoke|testType:smoke).*"
-  },
-  {
-    "name": "Regression Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@regression|testType:regression).*"
-  },
-  {
-    "name": "API Layer Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@api|layer:api).*"
-  },
-  {
-    "name": "UI Layer Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@ui|layer:ui).*"
-  },
-  {
-    "name": "INAGov Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@inagov|service:inagov).*"
-  },
-  {
-    "name": "INAPas Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@inapas|service:inapas).*"
-  },
-  {
-    "name": "INAKu Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@inaku|service:inaku).*"
-  },
-  {
-    "name": "SBU Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@sbu|service:sbu).*"
-  },
-  {
-    "name": "PeruriID Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@peruriid|service:peruriid).*"
-  },
-  {
-    "name": "MBG Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@mbg|service:mbg).*"
-  },
-  {
-    "name": "TelkomSign Service Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(@telkomsign|service:telkomsign).*"
-  },
-  {
-    "name": "External API Issues",
+    "name": "External API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
     "traceRegex": ".*External API.*"
   },
   {
-    "name": "Internal API Issues",
+    "name": "Internal API",
     "matchedStatuses": ["passed", "failed", "broken", "skipped"],
     "traceRegex": ".*Internal API.*"
   },
   {
-    "name": "Connection Timeouts",
+    "name": "Read timed out",
     "matchedStatuses": ["broken", "failed"],
     "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
   },
@@ -163,7 +76,7 @@ def addApiAllureCategoriesEnhanced() {
     "messageRegex": ".*(401|403|unauthorized|forbidden).*"
   },
   {
-    "name": "Data Validation Issues",
+    "name": "Data Issues",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(400|404|validation|schema).*"
   },
@@ -178,11 +91,11 @@ def addApiAllureCategoriesEnhanced() {
     "messageRegex": ".*(timeout|connection|network).*"
   },
   {
-    "name": "Standard Failed Tests",
+    "name": "Failed API Tests",
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Broken Tests", 
+    "name": "Broken API Tests", 
     "matchedStatuses": ["broken"]
   },
   {
@@ -192,42 +105,39 @@ def addApiAllureCategoriesEnhanced() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added enhanced Allure categories with comprehensive tag-based categorization"
+    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
- * Complete API Allure setup with enhanced environment and categories
+ * Complete API Allure setup with environment and categories
  */
 def setupApiAllureReport(def params, def env) {
     // Ensure target directory exists
     sh 'mkdir -p target/allure-results'
 
-    // Setup enhanced environment properties
+    // Setup environment properties
     setupApiAllureEnvironment(params, env)
 
-    // Add enhanced categories for better organization
-    addApiAllureCategoriesEnhanced()
+    // Add categories for better organization
+    addApiAllureCategories()
 
     // Generate allure.properties for better static serving
     generateAllureProperties()
 
-    echo "Enhanced API Allure report setup completed with tag-based categorization"
+    echo "API Allure report setup completed"
 }
 
 /**
- * Generate enhanced allure.properties for better report configuration
+ * Generate allure.properties for better report configuration
  */
 def generateAllureProperties() {
     def propertiesContent = '''allure.results.directory=target/allure-results
-allure.link.issue.pattern=https://github.com/inadigital/issues/{}
-allure.link.tms.pattern=https://inadigital.atlassian.net/browse/{}
-allure.label.owner=QA Team
-allure.label.layer=API
-allure.label.host=Jenkins
+allure.link.issue.pattern=https://example.org/issue/{}
+allure.link.tms.pattern=https://example.org/tms/{}
 '''
 
     writeFile file: 'allure.properties', text: propertiesContent
-    echo "Generated enhanced allure.properties configuration"
+    echo "Generated allure.properties configuration"
 }
 
 // =============================================================================
@@ -255,39 +165,17 @@ Language=TypeScript
 Jenkins_Job=${env.JOB_NAME ?: 'qa-web-automation'}
 Node_Version=${getNodeVersion()}
 Playwright_Version=${getPlaywrightVersion()}
-Categorization=Tag-Based
-AllureStrategy=Long-Term-Hybrid
 """
 
     writeFile file: 'allure-results/environment.properties', text: envContent
-    echo "Set enhanced Allure environment properties for Web tests: ${targetEnv}, ${browser}, headless=${headless}"
+    echo "Set Allure environment properties for Web tests: ${targetEnv}, ${browser}, headless=${headless}"
 }
 
 /**
- * Add enhanced categories for Web test results
+ * Add categories for Web test results
  */
-def addWebAllureCategoriesEnhanced() {
+def addWebAllureCategories() {
     def categoriesContent = '''[
-  {
-    "name": "Critical Web Failures",
-    "matchedStatuses": ["failed", "broken"],
-    "messageRegex": ".*(severity:critical|@critical|@high).*"
-  },
-  {
-    "name": "Smoke Test Failures",
-    "matchedStatuses": ["failed", "broken"],
-    "messageRegex": ".*@smoke.*"
-  },
-  {
-    "name": "High Priority Web Tests",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "messageRegex": ".*(severity:critical|@critical|@high).*"
-  },
-  {
-    "name": "UI Test Failures",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*(@ui|layer:ui).*"
-  },
   {
     "name": "Failed Tests",
     "matchedStatuses": ["failed"],
@@ -308,7 +196,7 @@ def addWebAllureCategoriesEnhanced() {
     "messageRegex": ".*retry.*"
   },
   {
-    "name": "UI Interaction Issues",
+    "name": "UI Issues",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(timeout|element not found|selector).*"
   },
@@ -325,20 +213,20 @@ def addWebAllureCategoriesEnhanced() {
 ]'''
 
     writeFile file: 'allure-results/categories.json', text: categoriesContent
-    echo "Added enhanced Allure categories for Web tests"
+    echo "Added Allure categories for Web tests"
 }
 
 /**
- * Complete Web Allure setup with enhanced environment and categories
+ * Complete Web Allure setup with environment and categories
  */
 def setupWebAllureReport(def params, def env) {
-    // Setup enhanced environment properties
+    // Setup environment properties
     setupWebAllureEnvironment(params, env)
 
-    // Add enhanced categories for better organization
-    addWebAllureCategoriesEnhanced()
+    // Add categories for better organization
+    addWebAllureCategories()
 
-    echo "Enhanced Web Allure report setup completed with tag-based categorization"
+    echo "Web Allure report setup completed"
 }
 
 // =============================================================================
@@ -382,20 +270,6 @@ def getPlaywrightVersion() {
 // =============================================================================
 
 /**
- * Add categories for test results - legacy method that delegates to enhanced version
- */
-def addApiAllureCategories() {
-    addApiAllureCategoriesEnhanced()
-}
-
-/**
- * Add categories for Web test results - legacy method that delegates to enhanced version
- */
-def addWebAllureCategories() {
-    addWebAllureCategoriesEnhanced()
-}
-
-/**
  * Clean up old allure results before new test run
  */
 def cleanAllureResults() {
@@ -429,6 +303,13 @@ def setAllureEnvironment(Map environmentProps) {
 
     writeFile file: 'target/allure-results/environment.properties', text: envContent
     echo "Set Allure environment properties"
+}
+
+/**
+ * Add categories for test results (legacy method - delegates to API)
+ */
+def addAllureCategories() {
+    addApiAllureCategories()
 }
 
 return this
