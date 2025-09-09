@@ -17,7 +17,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('inapas')) return 'inapas'
     if (jobNameLower.contains('inaku')) return 'inaku'
     if (jobNameLower.contains('sbu')) return 'sbu'
-    if (jobNameLower.contains('emeterai-smoke')) return 'emeterai and @high'
+    if (jobNameLower.contains('emeterai-smoke')) return 'emeterai-smoke'
     if (jobNameLower.contains('mbg')) return 'mbg'
     if (jobNameLower.contains('peruriid')) return 'peruriid'
     if (jobNameLower.contains('wizard')) return 'wizard'
