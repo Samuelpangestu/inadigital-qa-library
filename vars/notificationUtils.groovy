@@ -32,10 +32,10 @@ final class NotificationConfig {
 
             // SBU Services
             'sbu': 'SBU_WEBHOOK_URL',
-            'digidoc': 'SBU_WEBHOOK_URL',
             'emeterai': 'SBU_WEBHOOK_URL',
-            'meterai': 'SBU_WEBHOOK_URL',
-            'metel': 'SBU_WEBHOOK_URL',
+            'metel': 'METEL_WEBHOOK_URL',
+            'digitrust': 'DIGITRUST_WEBHOOK_URL',
+            'digidoc-dashboard-cmp': 'CMP_WEBHOOK_URL',
 
             // PeruriID Services
             'peruriid': 'PERURIID_WEBHOOK_URL',
