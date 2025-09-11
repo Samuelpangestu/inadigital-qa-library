@@ -22,6 +22,9 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('peruriid')) return 'peruriid'
     if (jobNameLower.contains('wizard')) return 'wizard'
     if (jobNameLower.contains('telkomsign')) return 'telkomsign'
+    if (jobNameLower.contains('metel')) return 'metel'
+    if (jobNameLower.contains('digitrust')) return 'digitrust'
+    if (jobNameLower.contains('digidoc-dashboard-cmp')) return 'digidoc-dashboard-cmp'
 
     // Web-specific job patterns
     if (jobNameLower.contains('perisai-ultimate')) return 'perisai-ultimate'
@@ -78,35 +81,34 @@ def setupTagMetadata(def env, def params) {
  */
 def mapTagToSheets(String tagToUse) {
     def sheetMapping = [
-            'peruriid'          : ['PERURIID'],
-            'external-iam'      : ['PERURIID'],
-            'internal-iam'      : ['PERURIID'],
-            'wizard'            : ['PERURIID'],
-            'sbu'               : ['SBU'],
-            'digidoc'           : ['SBU'],
-            'digitrust'         : ['SBU'],
-            'cmp'               : ['SBU'],
-            'emeterai'          : ['SBU'],
-            'meterai'           : ['SBU'],
-            'metel'             : ['SBU'],
-            'mbg'               : ['MBG'],
-            'inagov'            : ['INAGOV'],
-            'inapas'            : ['INAPAS'],
-            'inaku'             : ['INAKU'],
-            'telkomsign'        : ['TELKOMSIGN'],
+            'peruriid'             : ['PERURIID'],
+            'external-iam'         : ['PERURIID'],
+            'internal-iam'         : ['PERURIID'],
+            'wizard'               : ['PERURIID'],
+            'sbu'                  : ['SBU'],
+            'digidoc-dashboard-cmp': ['SBU'],
+            'digitrust'            : ['SBU'],
+            'cmp'                  : ['SBU'],
+            'emeterai'             : ['SBU'],
+            'metel'                : ['SBU'],
+            'mbg'                  : ['MBG'],
+            'inagov'               : ['INAGOV'],
+            'inapas'               : ['INAPAS'],
+            'inaku'                : ['INAKU'],
+            'telkomsign'           : ['TELKOMSIGN'],
             // Multi-service tags
-            'regression'        : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
-            'positive'          : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
-            'negative'          : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
-            'login'             : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
-            'smoke'             : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
-            'api'               : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU'],
+            'regression'           : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
+            'positive'             : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
+            'negative'             : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
+            'login'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
+            'smoke'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
+            'api'                  : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             // Web-specific mappings
-            'perisai-ultimate'  : ['PERURIID'],
-            'change-password'   : ['PERURIID'],
-            'login-success'     : ['PERURIID'],
-            'test'              : ['PERURIID'],
-            'regression-all-web': ['PERURIID', 'SBU']
+            'perisai-ultimate'     : ['PERURIID'],
+            'change-password'      : ['PERURIID'],
+            'login-success'        : ['PERURIID'],
+            'test'                 : ['PERURIID'],
+            'regression-all-web'   : ['PERURIID', 'SBU']
     ]
 
     def normalizedTag = tagToUse.toLowerCase().trim()
