@@ -67,7 +67,7 @@ def addApiAllureCategories() {
   },
   {
     "name": "Read timed out",
-    "matchedStatuses": ["broken", "failed"],
+    "matchedStatuses": ["failed"],
     "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
   },
   {
