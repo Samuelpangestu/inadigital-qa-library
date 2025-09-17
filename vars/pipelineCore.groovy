@@ -91,6 +91,49 @@ def setupEnvironmentCredentials(String credentialsId, Map additionalConfig = [:]
     }
 }
 
+/**
+ * Job name-based credentials selection
+ * Job contains "prod" → env-qa-api-automation-prod
+ * Job contains "staging" → env-qa-api-automation-staging
+ * Job contains "dev" → env-qa-api-automation-dev
+ * Default → base credentials
+ */
+def setupEnvironmentCredentialsByJobName(String baseCredentialsId, Map additionalConfig = [:]) {
+    def jobName = env.JOB_NAME.toLowerCase()
+    def credentialsId = baseCredentialsId // default
+
+    // Simple check - job contains keyword
+    if (jobName.contains('prod')) {
+        credentialsId = "${baseCredentialsId}-prod"
+    } else if (jobName.contains('staging')) {
+        credentialsId = "${baseCredentialsId}-staging"
+    } else if (jobName.contains('dev')) {
+        credentialsId = "${baseCredentialsId}-dev"
+    }
+
+    echo "Job: ${env.JOB_NAME} → Credentials: ${credentialsId}"
+
+    // Load credentials
+    withCredentials([file(credentialsId: credentialsId, variable: 'SECRET_FILE')]) {
+        sh '''
+            # Copy .env file
+            if [ -f "$SECRET_FILE" ]; then
+                cat "$SECRET_FILE" > .env
+            else
+                touch .env
+            fi
+        '''
+    }
+
+    // Add additional configuration
+    additionalConfig.each { key, value ->
+        sh """
+            echo "" >> .env
+            echo "${key}=${value}" >> .env
+        """
+    }
+}
+
 def setupGoogleServiceAccount() {
     withCredentials([file(credentialsId: "qa-google-service-account-key", variable: 'SERVICE_ACCOUNT_KEY')]) {
         sh '''
