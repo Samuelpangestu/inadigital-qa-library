@@ -33,22 +33,26 @@ def setupBuildMetadata(def env, def params, def commitId, String testType) {
 def setupApiDisplayName(def params, def env) {
     def tagToUse = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
     def displayTag = params.USE_CUSTOM_TAG ? "@${tagToUse}" : params.QA_SERVICE
+    def displayEnv = getEnvironmentFromJobName() // Use shared method
 
-    currentBuild.displayName = "#${currentBuild.number}: QA-API ${params.TARGET_ENV}: ${displayTag}"
-    currentBuild.description = "Tag: @${tagToUse} | Environment: ${params.TARGET_ENV}"
+    currentBuild.displayName = "#${currentBuild.number}: QA-API ${displayEnv}: ${displayTag}"
+    currentBuild.description = "Tag: @${tagToUse} | Environment: ${displayEnv}"
 }
 
 def setupWebDisplayName(def params, def env) {
     def tagToUse = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
     def displayTag = params.USE_CUSTOM_TAG ? "@${tagToUse}" : params.QA_SERVICE
+    def displayEnv = getEnvironmentFromJobName() // Use shared method
 
-    currentBuild.displayName = "#${currentBuild.number}: QA-WEB ${params.TARGET_ENV}: ${displayTag}"
-    currentBuild.description = "Playwright+Allure - ${params.BROWSER} | Tag: @${tagToUse} | Environment: ${params.TARGET_ENV}"
+    currentBuild.displayName = "#${currentBuild.number}: QA-WEB ${displayEnv}: ${displayTag}"
+    currentBuild.description = "Playwright+Allure - ${params.BROWSER} | Tag: @${tagToUse} | Environment: ${displayEnv}"
 }
 
 def setupMobileDisplayName(def params, def env) {
-    currentBuild.displayName = "#${currentBuild.number}: Mobile Test ${params.TARGET_ENV}: ${params.QA_SERVICE}"
-    currentBuild.description = "Mobile Automation - ${params.DEVICE_TYPE} | Environment: ${params.TARGET_ENV}"
+    def displayEnv = getEnvironmentFromJobName() // Use shared method
+
+    currentBuild.displayName = "#${currentBuild.number}: Mobile Test ${displayEnv}: ${params.QA_SERVICE}"
+    currentBuild.description = "Mobile Automation - ${params.DEVICE_TYPE} | Environment: ${displayEnv}"
 }
 
 // =============================================================================
@@ -70,6 +74,44 @@ def checkoutAndPrepare(String agentLabel) {
     }
 }
 
+/**
+ * Get environment from job name - Shared method for consistency
+ * Used by: setupEnvironmentCredentials, setupApiDisplayName, and others
+ */
+def getEnvironmentFromJobName() {
+    def jobName = env.JOB_NAME.toLowerCase()
+
+    if (jobName.contains('prod')) {
+        return 'PROD'
+    } else if (jobName.contains('staging')) {
+        return 'STAGING'
+    } else if (jobName.contains('dev')) {
+        return 'DEV'
+    } else {
+        return 'STAGING' // default
+    }
+}
+
+/**
+ * Get credentials ID from job name - Shared method for consistency
+ * Used by: setupEnvironmentCredentials and other credential functions
+ */
+def getCredentialsIdFromJobName(String baseCredentialsId) {
+    def environment = getEnvironmentFromJobName()
+
+    switch(environment) {
+        case 'PROD':
+            return "${baseCredentialsId}-prod"
+        case 'STAGING':
+            return "${baseCredentialsId}-staging"
+        case 'DEV':
+            return "${baseCredentialsId}-dev"
+        default:
+            return baseCredentialsId
+    }
+}
+
+// Will be deprecated in favor of setupEnvironmentCredentialsByJobName
 def setupEnvironmentCredentials(String credentialsId, Map additionalConfig = [:]) {
     withCredentials([file(credentialsId: credentialsId, variable: 'SECRET_FILE')]) {
         sh '''
@@ -91,27 +133,11 @@ def setupEnvironmentCredentials(String credentialsId, Map additionalConfig = [:]
     }
 }
 
-/**
- * Job name-based credentials selection
- * Job contains "prod" → env-qa-api-automation-prod
- * Job contains "staging" → env-qa-api-automation-staging
- * Job contains "dev" → env-qa-api-automation-dev
- * Default → base credentials
- */
 def setupEnvironmentCredentialsByJobName(String baseCredentialsId, Map additionalConfig = [:]) {
-    def jobName = env.JOB_NAME.toLowerCase()
-    def credentialsId = baseCredentialsId // default
+    def environment = getEnvironmentFromJobName()
+    def credentialsId = getCredentialsIdFromJobName(baseCredentialsId)
 
-    // Simple check - job contains keyword
-    if (jobName.contains('prod')) {
-        credentialsId = "${baseCredentialsId}-prod"
-    } else if (jobName.contains('staging')) {
-        credentialsId = "${baseCredentialsId}-staging"
-    } else if (jobName.contains('dev')) {
-        credentialsId = "${baseCredentialsId}-dev"
-    }
-
-    echo "Job: ${env.JOB_NAME} → Credentials: ${credentialsId}"
+    echo "Job: ${env.JOB_NAME} → Environment: ${environment} → Credentials: ${credentialsId}"
 
     // Load credentials
     withCredentials([file(credentialsId: credentialsId, variable: 'SECRET_FILE')]) {
@@ -171,7 +197,7 @@ def executeApiTests(String tagToUse, String mavenPath, String allurePath) {
 
 def executeWebTests(def params, String tagToUse, String nodePath, String pnpmPath, String allurePath) {
     env.PATH = "${nodePath}:${pnpmPath}:${allurePath}:${env.PATH}"
-    env.ENV = params.TARGET_ENV.toUpperCase()
+    env.ENV = getEnvironmentFromJobName() // Use shared method instead of params.TARGET_ENV
     env.HEADLESS = params.HEADLESS.toString()
     env.BROWSER = params.BROWSER
 
