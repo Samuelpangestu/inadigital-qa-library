@@ -25,6 +25,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('metel')) return 'metel'
     if (jobNameLower.contains('digitrust')) return 'digitrust'
     if (jobNameLower.contains('digidoc-dashboard-cmp')) return 'digidoc-dashboard-cmp'
+    if (jobNameLower.contains('emudhra')) return 'emudhra'
 
     // Web-specific job patterns
     if (jobNameLower.contains('perisai-ultimate')) return 'perisai-ultimate'
@@ -91,6 +92,7 @@ def mapTagToSheets(String tagToUse) {
             'cmp'                  : ['SBU'],
             'emeterai'             : ['SBU'],
             'metel'                : ['SBU'],
+            'emudhra'              : ['SBU'],
             'mbg'                  : ['MBG'],
             'inagov'               : ['INAGOV'],
             'inapas'               : ['INAPAS'],
