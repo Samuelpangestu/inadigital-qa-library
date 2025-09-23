@@ -5,8 +5,68 @@
  * Centralized notification management for API, Web, and Mobile test results
  *
  * @author Test Automation Team
- * @version 2.0
+ * @version 2.1
  */
+
+// =============================================================================
+// ENVIRONMENT DETECTION HELPER
+// =============================================================================
+
+class EnvironmentDetectionHelper {
+
+    /**
+     * Detect environment from Jenkins job name - matches Java logic
+     */
+    static String detectEnvironmentFromJobName(def env) {
+        if (!isRunningInJenkins(env)) {
+            return null
+        }
+
+        String jobName = env.JOB_NAME
+        if (!jobName) {
+            return null
+        }
+
+        String upperJobName = jobName.toUpperCase()
+
+        if (upperJobName.contains("PROD")) {
+            return "PROD"
+        } else if (upperJobName.contains("STAGING") || upperJobName.contains("STG")) {
+            return "STAGING"
+        } else if (upperJobName.contains("DEV")) {
+            return "DEV"
+        }
+
+        return null
+    }
+
+    /**
+     * Check if running in Jenkins environment
+     */
+    static boolean isRunningInJenkins(def env) {
+        return env.JOB_NAME && env.BUILD_NUMBER
+    }
+
+    /**
+     * Get effective environment with priority logic
+     * Priority: Jenkins job name > TARGET_ENV parameter > Default DEV
+     */
+    static String getEffectiveEnvironment(def env, def params) {
+        // First priority: Jenkins job name detection
+        String jenkinsEnv = detectEnvironmentFromJobName(env)
+        if (jenkinsEnv) {
+            return jenkinsEnv
+        }
+
+        // Second priority: TARGET_ENV parameter
+        if (params.TARGET_ENV) {
+            return params.TARGET_ENV.toUpperCase()
+        }
+
+        // Default fallback
+        return "DEV"
+    }
+}
 
 // =============================================================================
 // CONFIGURATION CONSTANTS
@@ -182,9 +242,12 @@ class MessageHeaderBuilder {
 class MessageBuildInfoBuilder {
 
     static String buildApiBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        // Use enhanced environment detection
+        def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
+
         return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
                 "🔄 *Commit ID:* ${commitId}\\n" +
-                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🌐 *Environment:* ${effectiveEnvironment}\\n" +
                 "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
                 "🔧 *Service:* ${params.QA_SERVICE_NAME ?: params.QA_SERVICE}\\n" +
                 "📋 *Job:* ${jobName}\\n" +
@@ -194,9 +257,12 @@ class MessageBuildInfoBuilder {
     }
 
     static String buildWebBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        // Use enhanced environment detection
+        def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
+
         return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
                 "🔄 *Commit ID:* ${commitId}\\n" +
-                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🌐 *Environment:* ${effectiveEnvironment}\\n" +
                 "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
                 "🔧 *Browser:* ${params.BROWSER}\\n" +
                 "👤 *Headless:* ${params.HEADLESS}\\n" +
@@ -207,9 +273,12 @@ class MessageBuildInfoBuilder {
     }
 
     static String buildMobileBuildInfo(String statusEmoji, String status, def env, def params, String commitId, String jobName, String currentTime, String executionTime) {
+        // Use enhanced environment detection
+        def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
+
         return "${statusEmoji} *Build #${env.BUILD_NUMBER}* | ${status}\\n" +
                 "🔄 *Commit ID:* ${commitId}\\n" +
-                "🌐 *Environment:* ${params.TARGET_ENV}\\n" +
+                "🌐 *Environment:* ${effectiveEnvironment}\\n" +
                 "🏷️ *Tags:* @${env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE}\\n" +
                 "📱 *Device:* ${params.DEVICE_TYPE ?: 'Default'}\\n" +
                 "📋 *Job:* ${jobName}\\n" +
