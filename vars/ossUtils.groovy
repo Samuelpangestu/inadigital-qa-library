@@ -184,42 +184,4 @@ def uploadMultipleFolders(List<String> folders, String baseRemotePath, String en
     return results
 }
 
-/**
- * Enhanced URL generation that includes environment in the path
- */
-
-def getReportUrlWithEnvironment(String baseUrl, String serviceForUrl, String serviceNameForUrl, String buildPath, def env, def params) {
-    // Get the effective environment using the same logic as notifications
-    def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-
-    // Sanitize service name
-    def sanitizedTag = sanitizeServiceName(serviceForUrl)
-
-    // Include environment in the path structure
-    def environmentSuffix = effectiveEnvironment?.toLowerCase() ?: 'dev'
-    def enhancedServiceName = "${sanitizedTag}-${environmentSuffix}"
-
-    echo "🔗 Building URL with environment: ${enhancedServiceName}"
-
-    return "${baseUrl}/${enhancedServiceName}/${serviceNameForUrl}/${buildPath}/index.html"
-}
-
-/**
- * Enhanced remote path building that includes environment
- */
-def buildRemotePathWithEnvironment(String serviceForUrl, String serviceNameForUrl, String buildPath, def env, def params) {
-    // Get the effective environment
-    def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-    def environmentSuffix = effectiveEnvironment?.toLowerCase() ?: 'dev'
-
-    // Sanitize service name and add environment
-    def sanitizedTag = sanitizeServiceName(serviceForUrl)
-    def enhancedServiceName = "${sanitizedTag}-${environmentSuffix}"
-
-    def remotePath = "oss://quality-assurance/${enhancedServiceName}/${serviceNameForUrl}/${buildPath}/"
-
-    echo "🗂️ Built environment-aware remote path: ${remotePath}"
-    return remotePath
-}
-
 return this
