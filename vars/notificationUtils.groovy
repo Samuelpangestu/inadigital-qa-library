@@ -273,6 +273,36 @@ class MessageFooterBuilder {
                 "[📱 Mobile Test Report](${reportUrl})\\n" +
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     }
+
+    // Environment-aware footer builders
+    static String buildApiFooterWithEnvironment(String baseUrl, def params, def env, String buildPath) {
+        def serviceForUrl = env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE
+        def serviceNameForUrl = params.QA_SERVICE_NAME ?: params.QA_SERVICE
+
+        // Get the effective environment
+        def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
+        def environmentSuffix = effectiveEnvironment?.toLowerCase() ?: 'dev'
+
+        // Sanitize service name and add environment
+        def sanitizedTag = sanitizeServiceName(serviceForUrl)
+        def enhancedServiceName = "${sanitizedTag}-${environmentSuffix}"
+
+        def reportUrl = "${baseUrl}/${enhancedServiceName}/${serviceNameForUrl}/${buildPath}/index.html"
+
+        return "📄 *View Test Reports:*\\n" +
+                "[📊 ${params.QA_SERVICE} ${effectiveEnvironment} Allure Report](${reportUrl})\\n" +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    }
+
+    // Helper method to sanitize service name (same as in ossUtils)
+    private static String sanitizeServiceName(String serviceName) {
+        return serviceName.toLowerCase()
+                .replaceAll("@", "")
+                .replaceAll("\\s+(and|or|not)\\s+", "-")
+                .replaceAll("[^a-z0-9\\-_]", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-\$", "")
+    }
 }
 
 // =============================================================================
@@ -554,7 +584,16 @@ class NotificationOrchestrator {
         )
         def testSummary = MessageTestSummaryBuilder.buildApiTestSummary(testStats, metrics.successRate, metrics.progressBar)
         def featureStats = featureStatsHandler.createFeatureStatsSection(this.env, this.readJSON)
-        def footer = MessageFooterBuilder.buildApiFooter(reportUrl, params)
+
+        // Use environment-aware footer if we have build path info
+        def footer
+        if (this.env.BUILD_PATH) {
+            footer = MessageFooterBuilder.buildApiFooterWithEnvironment(
+                    "https://qa.inadigital.co.id", params, this.env, this.env.BUILD_PATH
+            )
+        } else {
+            footer = MessageFooterBuilder.buildApiFooter(reportUrl, params)
+        }
 
         return "${header}\\n\\n${buildInfo}\\n\\n${testSummary}\\n\\n${featureStats ? featureStats + '\\n\\n' : ''}${footer}"
     }
