@@ -56,47 +56,37 @@ Java_Version=${getJavaVersion()}
 def addApiAllureCategories() {
     def categoriesContent = '''[
   {
-    "name": "External API",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*External API.*"
-  },
-  {
-    "name": "Internal API",
-    "matchedStatuses": ["passed", "failed", "broken", "skipped"],
-    "traceRegex": ".*Internal API.*"
-  },
-  {
-    "name": "Read timed out",
+    "name": "Network Timeout Errors",
     "matchedStatuses": ["failed"],
     "traceRegex": ".*SocketTimeoutException.*Read timed out.*"
   },
   {
-    "name": "Authentication Issues",
+    "name": "Authentication & Authorization Failures (401/403)",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(401|403|unauthorized|forbidden).*"
   },
   {
-    "name": "Data Issues",
+    "name": "Client Request Errors (4xx)",
     "matchedStatuses": ["failed"],
-    "messageRegex": ".*(400|404|validation|schema).*"
+    "messageRegex": ".*(400|404|405|409|validation|schema|bad request).*"
   },
   {
-    "name": "Server Issues",
+    "name": "Server-Side Errors (5xx)",
     "matchedStatuses": ["failed"],
-    "messageRegex": ".*(500|502|503|504).*"
+    "messageRegex": ".*(500|502|503|504|internal server|gateway|service unavailable).*"
   },
   {
-    "name": "Infrastructure Issues",
+    "name": "Infrastructure & Connectivity Issues",
     "matchedStatuses": ["broken", "failed"],
-    "messageRegex": ".*(timeout|connection|network).*"
+    "messageRegex": ".*(timeout|connection|network|unreachable|refused).*"
   },
   {
-    "name": "Failed API Tests",
-    "matchedStatuses": ["failed"]
-  },
-  {
-    "name": "Broken API Tests", 
+    "name": "Test Framework Execution Errors",
     "matchedStatuses": ["broken"]
+  },
+  {
+    "name": "Test Assertion Failures",
+    "matchedStatuses": ["failed"]
   },
   {
     "name": "Skipped Tests",
@@ -105,7 +95,6 @@ def addApiAllureCategories() {
 ]'''
 
     writeFile file: 'target/allure-results/categories.json', text: categoriesContent
-    echo "Added Allure categories with External/Internal API support"
 }
 
 /**
