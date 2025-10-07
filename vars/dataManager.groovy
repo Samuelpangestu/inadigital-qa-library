@@ -22,7 +22,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('mbg')) return 'mbg'
     if (jobNameLower.contains('peruriid')) return 'peruriid'
     if (jobNameLower.contains('wizard')) return 'wizard'
-    if (jobNameLower.contains('telkomsign')) return 'telkomsign'
+    if (jobNameLower.contains('telkomsign-daily-dev')) return 'telkomsign'
     if (jobNameLower.contains('telkomsign-smoke-dev')) return 'telkomsign-smoke-dev'
     if (jobNameLower.contains('metel')) return 'metel'
     if (jobNameLower.contains('digitrust')) return 'digitrust'
