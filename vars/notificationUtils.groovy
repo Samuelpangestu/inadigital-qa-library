@@ -328,6 +328,9 @@ final class NotificationConfig {
 
             // eMudhra Services
             'emudhra': 'EMUDHRA_WEBHOOK_URL',
+
+            // Playground
+            'playground': 'PLAYGROUND_WEBHOOK_URL',
     ]
 
     static final String DEFAULT_WEBHOOK = 'GENERAL_WEBHOOK_URL'

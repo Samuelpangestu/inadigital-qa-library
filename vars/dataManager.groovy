@@ -28,6 +28,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('digitrust')) return 'digitrust'
     if (jobNameLower.contains('digidoc-dashboard-cmp')) return 'digidoc-dashboard-cmp'
     if (jobNameLower.contains('emudhra')) return 'emudhra'
+    if (jobNameLower.contains('playground')) return 'playground'
 
     // Web-specific job patterns
     if (jobNameLower.contains('perisai-ultimate')) return 'perisai-ultimate'
