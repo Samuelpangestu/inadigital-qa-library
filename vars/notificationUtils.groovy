@@ -343,21 +343,17 @@ final class NotificationConfig {
 class WebhookManager {
 
     /**
-     * Get webhook URL based on job name, tag, and environment
-     * @param productName The tag/service name
-     * @param environment The target environment (DEV/STAGING/PROD)
-     * @param env Jenkins environment variables
-     * @param sh Shell script executor
-     * @return Webhook URL string
+     * Get webhook URL with environment-aware mapping
+     * Priority: Environment-specific webhook > Standard service webhook > Default webhook
      */
-    def getWebhookUrl(String productName, String environment, def env, def sh) {
+    def getWebhookUrl(String productName, String environment, def sh) {
         def normalizedTag = productName.toLowerCase().replaceAll('@', '')
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
         def jobNameLower = env.JOB_NAME.toLowerCase()
 
         echo "🔍 Webhook resolution: job='${env.JOB_NAME}', tag='${normalizedTag}', env='${normalizedEnv}'"
 
-        // PRIORITY 1: Playground jobs (Job Name Check)
+        // Playground jobs (based on job name)
         if (jobNameLower.contains('playground')) {
             echo "✅ Playground job detected"
             def webhook = readWebhookFromEnv(NotificationConfig.PLAYGROUND_WEBHOOK, sh)
@@ -366,7 +362,7 @@ class WebhookManager {
             return getDefaultWebhook(sh)
         }
 
-        // PRIORITY 2: Environment-specific webhooks
+        // Environment-specific webhooks
         def envSpecificKey = getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
         if (envSpecificKey) {
             echo "🔍 Checking env-specific: ${envSpecificKey}"
@@ -377,13 +373,13 @@ class WebhookManager {
             }
         }
 
-        // PRIORITY 3: Service-specific webhooks (Tag-based)
+        // Service-specific webhooks (based on tag)
         def serviceKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
         }?.value
 
         if (serviceKey) {
-            echo "🔍 Checking service webhook: ${serviceKey}"
+            echo "Service webhook: ${serviceKey}"
             def webhook = readWebhookFromEnv(serviceKey, sh)
             if (webhook) {
                 echo "✅ Using service webhook"
@@ -391,7 +387,7 @@ class WebhookManager {
             }
         }
 
-        // PRIORITY 4: Default webhook
+        // Default webhook
         echo "⚠️ Using default webhook"
         return getDefaultWebhook(sh)
     }
