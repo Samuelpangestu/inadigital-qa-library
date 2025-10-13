@@ -328,12 +328,10 @@ final class NotificationConfig {
 
             // eMudhra Services
             'emudhra': 'EMUDHRA_WEBHOOK_URL',
-
-            // Playground
-            'playground': 'PLAYGROUND_WEBHOOK_URL',
     ]
 
     static final String DEFAULT_WEBHOOK = 'GENERAL_WEBHOOK_URL'
+    static final String PLAYGROUND_WEBHOOK = 'PLAYGROUND_WEBHOOK_URL'
     static final String TIMEZONE = 'Asia/Jakarta'
     static final int PROGRESS_BAR_LENGTH = 10
 }
@@ -351,22 +349,68 @@ class WebhookManager {
     def getWebhookUrl(String productName, String environment, def sh) {
         def normalizedTag = productName.toLowerCase().replaceAll('@', '')
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
+        def jobNameLower = env.JOB_NAME.toLowerCase()
 
-        // Check for environment-specific webhook first
-        def envSpecificWebhook = getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
-        if (envSpecificWebhook) {
-            def webhookUrl = sh(script: "grep \"${envSpecificWebhook}\" .env | cut -d= -f2-", returnStdout: true).trim()
-            if (webhookUrl && !webhookUrl.isEmpty()) {
-                return webhookUrl
+        echo "🔍 Webhook resolution: job='${env.JOB_NAME}', tag='${normalizedTag}', env='${normalizedEnv}'"
+
+        // Playground jobs (based on job name)
+        if (jobNameLower.contains('playground')) {
+            echo "✅ Playground job detected"
+            def webhook = readWebhookFromEnv(NotificationConfig.PLAYGROUND_WEBHOOK, sh)
+            if (webhook) return webhook
+            echo "⚠️ Playground webhook not found, using default"
+            return getDefaultWebhook(sh)
+        }
+
+        // Environment-specific webhooks
+        def envSpecificKey = getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
+        if (envSpecificKey) {
+            echo "🔍 Checking env-specific: ${envSpecificKey}"
+            def webhook = readWebhookFromEnv(envSpecificKey, sh)
+            if (webhook) {
+                echo "✅ Using env-specific webhook"
+                return webhook
             }
         }
 
-        // Fallback to standard service webhook mapping
-        def webhookKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
+        // Service-specific webhooks (based on tag)
+        def serviceKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
-        }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
+        }?.value
 
-        return sh(script: "grep \"${webhookKey}\" .env | cut -d= -f2-", returnStdout: true).trim()
+        if (serviceKey) {
+            echo "Service webhook: ${serviceKey}"
+            def webhook = readWebhookFromEnv(serviceKey, sh)
+            if (webhook) {
+                echo "✅ Using service webhook"
+                return webhook
+            }
+        }
+
+        // Default webhook
+        echo "⚠️ Using default webhook"
+        return getDefaultWebhook(sh)
+    }
+
+    private def readWebhookFromEnv(String webhookKey, def sh) {
+        try {
+            def webhook = sh(
+                    script: "grep '${webhookKey}' .env | cut -d= -f2- || echo ''",
+                    returnStdout: true
+            ).trim()
+            return (webhook && !webhook.isEmpty()) ? webhook : null
+        } catch (Exception e) {
+            echo "⚠️ Error reading ${webhookKey}: ${e.message}"
+            return null
+        }
+    }
+
+    private def getDefaultWebhook(def sh) {
+        def webhook = readWebhookFromEnv(NotificationConfig.DEFAULT_WEBHOOK, sh)
+        if (!webhook) {
+            echo "❌ CRITICAL: Default webhook not found!"
+        }
+        return webhook
     }
 
     /**
