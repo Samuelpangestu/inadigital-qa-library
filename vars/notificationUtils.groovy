@@ -509,10 +509,12 @@ class NotificationOrchestrator {
         def context = buildNotificationContext(buildStatus, commitId, env, params)
         def testStats = TestStatisticsCollector.getApiTestStatistics(env)
         def metrics = calculateMetrics(testStats)
+
         def message = buildApiMessage(context, testStats, metrics, reportUrl, params)
 
+        // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, env, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
 
         this.echo "📡 Sending API notification for: ${context.productName} (${effectiveEnvironment})"
         this.echo "📡 Using webhook URL from: ${getWebhookKeyUsed(context.productName, effectiveEnvironment)}"
@@ -524,10 +526,12 @@ class NotificationOrchestrator {
         def context = buildNotificationContext(buildStatus, commitId, env, params)
         def testStats = TestStatisticsCollector.getWebTestStatistics(env)
         def metrics = calculateMetrics(testStats)
+
         def message = buildWebMessage(context, testStats, metrics, reportUrl, params)
 
+        // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, env, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
 
         this.echo "📡 Sending Web notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -538,10 +542,12 @@ class NotificationOrchestrator {
         def context = buildNotificationContext(buildStatus, commitId, env, params)
         def testStats = TestStatisticsCollector.getMobileTestStatistics(env)
         def metrics = calculateMetrics(testStats)
+
         def message = buildMobileMessage(context, testStats, metrics, reportUrl, params)
 
+        // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, env, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
 
         this.echo "📡 Sending Mobile notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -551,32 +557,23 @@ class NotificationOrchestrator {
     /**
      * Helper method to show which webhook key is being used (for debugging)
      */
-    private String getWebhookKeyUsed(String productName, String environment, def env) {
+    private String getWebhookKeyUsed(String productName, String environment) {
         def normalizedTag = productName.toLowerCase().replaceAll('@', '')
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
-        def jobNameLower = env.JOB_NAME.toLowerCase()
 
-        // Check playground first
-        if (jobNameLower.contains('playground')) {
-            return NotificationConfig.PLAYGROUND_WEBHOOK
-        }
+        // Check environment-specific first
+        def envSpecificKey = NotificationConfig.ENVIRONMENT_SPECIFIC_WEBHOOKS.find { service, envMap ->
+            normalizedTag.contains(service)
+        }?.value?.get(normalizedEnv)
 
-        // Check environment-specific
-        def envSpecificKey = webhookManager.getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
         if (envSpecificKey) {
             return envSpecificKey
         }
 
-        // Check service mapping
-        def serviceKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
+        // Fallback to standard mapping
+        return NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
-        }?.value
-
-        if (serviceKey) {
-            return serviceKey
-        }
-
-        return NotificationConfig.DEFAULT_WEBHOOK
+        }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
     }
 
     private Map buildNotificationContext(String buildStatus, String commitId, def env, def params) {
