@@ -283,14 +283,14 @@ final class NotificationConfig {
     // Environment-specific webhook mappings
     static final Map<String, Map<String, String>> ENVIRONMENT_SPECIFIC_WEBHOOKS = [
             'emeterai': [
-                    'DEV': 'EMETERAI_DEV_WEBHOOK_URL',
+                    'DEV'    : 'EMETERAI_DEV_WEBHOOK_URL',
                     'STAGING': 'EMETERAI_STAGING_WEBHOOK_URL',
-                    'PROD': 'EMETERAI_PROD_WEBHOOK_URL'
+                    'PROD'   : 'EMETERAI_PROD_WEBHOOK_URL'
             ],
-            'digidoc': [
-                    'DEV': 'DIGIDOC_DEV_WEBHOOK_URL',
+            'digidoc' : [
+                    'DEV'    : 'DIGIDOC_DEV_WEBHOOK_URL',
                     'STAGING': 'DIGIDOC_STAGING_WEBHOOK_URL',
-                    'PROD': 'DIGIDOC_PROD_WEBHOOK_URL'
+                    'PROD'   : 'DIGIDOC_PROD_WEBHOOK_URL'
             ]
             // Add more services that need environment-specific webhooks
     ]
@@ -298,36 +298,39 @@ final class NotificationConfig {
     // Standard service webhook mapping (for services without environment-specific needs)
     static final Map<String, String> SERVICE_WEBHOOK_MAPPING = [
             // INAGov Services
-            'inagov': 'INAGOV_WEBHOOK_URL',
-            'personal-data': 'INAGOV_WEBHOOK_URL',
-            'aparatur': 'INAGOV_WEBHOOK_URL',
-            'pembelajaran': 'INAGOV_WEBHOOK_URL',
-            'dashbor': 'INAGOV_WEBHOOK_URL',
+            'inagov'               : 'INAGOV_WEBHOOK_URL',
+            'personal-data'        : 'INAGOV_WEBHOOK_URL',
+            'aparatur'             : 'INAGOV_WEBHOOK_URL',
+            'pembelajaran'         : 'INAGOV_WEBHOOK_URL',
+            'dashbor'              : 'INAGOV_WEBHOOK_URL',
 
             // INAPas Services
-            'inapas': 'INAPAS_WEBHOOK_URL',
+            'inapas'               : 'INAPAS_WEBHOOK_URL',
 
             // INAKu Services
-            'inaku': 'INAKU_WEBHOOK_URL',
+            'inaku'                : 'INAKU_WEBHOOK_URL',
 
             // MBG Services
-            'mbg': 'MBG_WEBHOOK_URL',
+            'mbg'                  : 'MBG_WEBHOOK_URL',
 
             // SBU Services (fallback for services not in environment-specific mapping)
-            'sbu': 'SBU_WEBHOOK_URL',
-            'metel': 'METEL_WEBHOOK_URL',
-            'digitrust': 'DIGITRUST_WEBHOOK_URL',
+            'sbu'                  : 'SBU_WEBHOOK_URL',
+            'metel'                : 'METEL_WEBHOOK_URL',
+            'digitrust'            : 'DIGITRUST_WEBHOOK_URL',
             'digidoc-dashboard-cmp': 'CMP_WEBHOOK_URL',
 
             // PeruriID Services
-            'peruriid': 'PERURIID_WEBHOOK_URL',
-            'wizard': 'PERURIID_WEBHOOK_URL',
+            'peruriid'             : 'PERURIID_WEBHOOK_URL',
+            'wizard'               : 'PERURIID_WEBHOOK_URL',
 
             // Telkomsign Services
-            'telkomsign': 'TELKOMSIGN_WEBHOOK_URL',
+            'telkomsign'           : 'TELKOMSIGN_WEBHOOK_URL',
 
             // eMudhra Services
-            'emudhra': 'EMUDHRA_WEBHOOK_URL',
+            'emudhra'              : 'EMUDHRA_WEBHOOK_URL',
+
+            // Playground
+            'playground'           : 'PLAYGROUND_WEBHOOK_URL',
     ]
 
     static final String DEFAULT_WEBHOOK = 'GENERAL_WEBHOOK_URL'
@@ -345,25 +348,45 @@ class WebhookManager {
      * Get webhook URL with environment-aware mapping
      * Priority: Environment-specific webhook > Standard service webhook > Default webhook
      */
-    def getWebhookUrl(String productName, String environment, def sh) {
+    def getWebhookUrl(String productName, String environment, def sh, def env) {
         def normalizedTag = productName.toLowerCase().replaceAll('@', '')
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
+        def jobNameLower = env.JOB_NAME?.toLowerCase() ?: ''
 
-        // Check for environment-specific webhook first
-        def envSpecificWebhook = getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
-        if (envSpecificWebhook) {
-            def webhookUrl = sh(script: "grep \"${envSpecificWebhook}\" .env | cut -d= -f2-", returnStdout: true).trim()
+        // ✅ 1. Playground job should always use PLAYGROUND_WEBHOOK_URL from mapping
+        if (jobNameLower.contains('playground')) {
+            def webhookKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING['playground']
+            def webhookUrl = sh(
+                    script: "grep \"${webhookKey}\" .env | cut -d= -f2-",
+                    returnStdout: true
+            ).trim()
+
             if (webhookUrl && !webhookUrl.isEmpty()) {
                 return webhookUrl
             }
         }
 
-        // Fallback to standard service webhook mapping
+        // ✅ 2. Try environment-specific webhook if available
+        def envSpecificWebhook = getEnvironmentSpecificWebhook(normalizedTag, normalizedEnv)
+        if (envSpecificWebhook) {
+            def webhookUrl = sh(
+                    script: "grep \"${envSpecificWebhook}\" .env | cut -d= -f2-",
+                    returnStdout: true
+            ).trim()
+            if (webhookUrl && !webhookUrl.isEmpty()) {
+                return webhookUrl
+            }
+        }
+
+        // ✅ 3. Fallback to standard service webhook mapping
         def webhookKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
         }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
 
-        return sh(script: "grep \"${webhookKey}\" .env | cut -d= -f2-", returnStdout: true).trim()
+        return sh(
+                script: "grep \"${webhookKey}\" .env | cut -d= -f2-",
+                returnStdout: true
+        ).trim()
     }
 
     /**
@@ -463,7 +486,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending API notification for: ${context.productName} (${effectiveEnvironment})"
         this.echo "📡 Using webhook URL from: ${getWebhookKeyUsed(context.productName, effectiveEnvironment)}"
@@ -480,7 +503,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending Web notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -496,7 +519,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending Mobile notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -507,10 +530,16 @@ class NotificationOrchestrator {
      * Helper method to show which webhook key is being used (for debugging)
      */
     private String getWebhookKeyUsed(String productName, String environment) {
-        def normalizedTag = productName.toLowerCase().replaceAll('@', '')
+        def normalizedTag = productName?.toLowerCase()?.replaceAll('@', '') ?: ''
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
+        def jobNameLower = env?.JOB_NAME?.toLowerCase() ?: ''
 
-        // Check environment-specific first
+        // ✅ 1. Playground job detection by JOB_NAME
+        if (jobNameLower.contains('playground')) {
+            return NotificationConfig.SERVICE_WEBHOOK_MAPPING['playground']
+        }
+
+        // ✅ 2. Check environment-specific mapping first
         def envSpecificKey = NotificationConfig.ENVIRONMENT_SPECIFIC_WEBHOOKS.find { service, envMap ->
             normalizedTag.contains(service)
         }?.value?.get(normalizedEnv)
@@ -519,7 +548,7 @@ class NotificationOrchestrator {
             return envSpecificKey
         }
 
-        // Fallback to standard mapping
+        // ✅ 3. Fallback to standard service mapping
         return NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
         }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
@@ -527,14 +556,14 @@ class NotificationOrchestrator {
 
     private Map buildNotificationContext(String buildStatus, String commitId, def env, def params) {
         return [
-                jobName: env.JOB_NAME.split('/')[-1],
-                status: buildStatus ?: 'SUCCESS',
-                statusEmoji: NotificationFormatter.getStatusEmoji(buildStatus ?: 'SUCCESS'),
-                productName: env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE,
-                currentTime: NotificationFormatter.formatCurrentTime(),
+                jobName      : env.JOB_NAME.split('/')[-1],
+                status       : buildStatus ?: 'SUCCESS',
+                statusEmoji  : NotificationFormatter.getStatusEmoji(buildStatus ?: 'SUCCESS'),
+                productName  : env.EFFECTIVE_QA_SERVICE ?: params.QA_SERVICE,
+                currentTime  : NotificationFormatter.formatCurrentTime(),
                 executionTime: NotificationFormatter.formatBuildDuration(this.currentBuild),
-                commitId: commitId,
-                buildNumber: env.BUILD_NUMBER
+                commitId     : commitId,
+                buildNumber  : env.BUILD_NUMBER
         ]
     }
 
