@@ -348,20 +348,22 @@ class WebhookManager {
      * Get webhook URL with environment-aware mapping
      * Priority: Environment-specific webhook > Standard service webhook > Default webhook
      */
-    def getWebhookUrl(String productName, String environment, def sh) {
+    def getWebhookUrl(String productName, String environment, def sh, def env) {
         def normalizedTag = productName.toLowerCase().replaceAll('@', '')
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
+        def jobNameLower = env.JOB_NAME?.toLowerCase() ?: ''
 
         // ✅ 1. Playground job should always use PLAYGROUND_WEBHOOK_URL from mapping
-        if (normalizedTag.contains('playground')) {
-            def playgroundKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING['playground']
-            def playgroundWebhook = sh(
-                    script: "grep \"${playgroundKey}\" .env | cut -d= -f2-",
+        if (jobNameLower.contains('playground')) {
+            def webhookKey = NotificationConfig.SERVICE_WEBHOOK_MAPPING['playground']
+            def webhookUrl = sh(
+                    script: "grep \"${webhookKey}\" .env | cut -d= -f2-",
                     returnStdout: true
             ).trim()
 
-            if (playgroundWebhook && !playgroundWebhook.isEmpty()) {
-                return playgroundWebhook
+            if (webhookUrl && !webhookUrl.isEmpty()) {
+                echo "📡 Playground job detected — sending report to PLAYGROUND_WEBHOOK_URL"
+                return webhookUrl
             }
         }
 
@@ -372,7 +374,6 @@ class WebhookManager {
                     script: "grep \"${envSpecificWebhook}\" .env | cut -d= -f2-",
                     returnStdout: true
             ).trim()
-
             if (webhookUrl && !webhookUrl.isEmpty()) {
                 return webhookUrl
             }
@@ -486,7 +487,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending API notification for: ${context.productName} (${effectiveEnvironment})"
         this.echo "📡 Using webhook URL from: ${getWebhookKeyUsed(context.productName, effectiveEnvironment)}"
