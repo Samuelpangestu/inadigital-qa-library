@@ -13,7 +13,6 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     def jobNameLower = jobName.toLowerCase()
 
     // Job name based tag determination
-    if (jobNameLower.contains('playground')) return 'playground'
     if (jobNameLower.contains('inagov')) return 'inagov'
     if (jobNameLower.contains('inapas')) return 'inapas'
     if (jobNameLower.contains('inaku')) return 'inaku'

@@ -362,7 +362,6 @@ class WebhookManager {
             ).trim()
 
             if (webhookUrl && !webhookUrl.isEmpty()) {
-                echo "📡 Playground job detected — sending report to PLAYGROUND_WEBHOOK_URL"
                 return webhookUrl
             }
         }
