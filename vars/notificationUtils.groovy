@@ -503,7 +503,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending Web notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -519,7 +519,7 @@ class NotificationOrchestrator {
 
         // Pass environment to webhook manager
         def effectiveEnvironment = EnvironmentDetectionHelper.getEffectiveEnvironment(env, params)
-        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh)
+        def webhookUrl = webhookManager.getWebhookUrl(context.productName, effectiveEnvironment, this.sh, env)
 
         this.echo "📡 Sending Mobile notification for: ${context.productName} (${effectiveEnvironment})"
 
@@ -530,10 +530,16 @@ class NotificationOrchestrator {
      * Helper method to show which webhook key is being used (for debugging)
      */
     private String getWebhookKeyUsed(String productName, String environment) {
-        def normalizedTag = productName.toLowerCase().replaceAll('@', '')
+        def normalizedTag = productName?.toLowerCase()?.replaceAll('@', '') ?: ''
         def normalizedEnv = environment?.toUpperCase() ?: 'DEV'
+        def jobNameLower = env?.JOB_NAME?.toLowerCase() ?: ''
 
-        // Check environment-specific first
+        // ✅ 1. Playground job detection by JOB_NAME
+        if (jobNameLower.contains('playground')) {
+            return NotificationConfig.SERVICE_WEBHOOK_MAPPING['playground']
+        }
+
+        // ✅ 2. Check environment-specific mapping first
         def envSpecificKey = NotificationConfig.ENVIRONMENT_SPECIFIC_WEBHOOKS.find { service, envMap ->
             normalizedTag.contains(service)
         }?.value?.get(normalizedEnv)
@@ -542,7 +548,7 @@ class NotificationOrchestrator {
             return envSpecificKey
         }
 
-        // Fallback to standard mapping
+        // ✅ 3. Fallback to standard service mapping
         return NotificationConfig.SERVICE_WEBHOOK_MAPPING.find { service, _ ->
             normalizedTag.contains(service)
         }?.value ?: NotificationConfig.DEFAULT_WEBHOOK
