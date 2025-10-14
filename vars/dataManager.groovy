@@ -30,7 +30,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('emudhra')) return 'emudhra'
 
     // Web-specific job patterns
-    if (jobNameLower.contains('perisai-ultimate')) return 'perisai-ultimate'
+    if (jobNameLower.contains('perisai-digidoc')) return 'perisai-digidoc'
     if (jobNameLower.contains('change-password')) return 'change-password'
     if (jobNameLower.contains('login-success')) return 'login-success'
     if (jobNameLower.contains('regression-all-web')) return 'regression'
