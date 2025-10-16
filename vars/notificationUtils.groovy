@@ -314,7 +314,7 @@ final class NotificationConfig {
             'mbg'                  : 'MBG_WEBHOOK_URL',
 
             // SBU Services (fallback for services not in environment-specific mapping)
-            'sbu'                  : 'SBU_WEBHOOK_URL',
+            'perisai-digidoc'      : 'PERISAI_DIGIDOC_WEBHOOK_URL',
             'metel'                : 'METEL_WEBHOOK_URL',
             'digitrust'            : 'DIGITRUST_WEBHOOK_URL',
             'digidoc-dashboard-cmp': 'CMP_WEBHOOK_URL',
