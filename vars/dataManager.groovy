@@ -108,7 +108,7 @@ def mapTagToSheets(String tagToUse) {
             'smoke'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             'api'                  : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             // Web-specific mappings
-            'perisai-digidoc'     : ['DIGIDOC_WEB'],
+            'perisai-digidoc'     : ['WEB-PERISAI-DIGIDOC'],
             'change-password'      : ['PERURIID'],
             'login-success'        : ['PERURIID'],
             'test'                 : ['PERURIID'],
