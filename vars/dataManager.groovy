@@ -30,7 +30,7 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('emudhra')) return 'emudhra'
 
     // Web-specific job patterns
-    if (jobNameLower.contains('perisai-digidoc')) return 'perisai-digidoc'
+    if (jobNameLower.contains('web-perisai-digidoc')) return 'web-perisai-digidoc'
     if (jobNameLower.contains('change-password')) return 'change-password'
     if (jobNameLower.contains('login-success')) return 'login-success'
     if (jobNameLower.contains('regression-all-web')) return 'regression'
@@ -108,7 +108,7 @@ def mapTagToSheets(String tagToUse) {
             'smoke'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             'api'                  : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             // Web-specific mappings
-            'perisai-ultimate'     : ['PERURIID'],
+            'perisai-digidoc'     : ['DIGIDOC_WEB'],
             'change-password'      : ['PERURIID'],
             'login-success'        : ['PERURIID'],
             'test'                 : ['PERURIID'],
