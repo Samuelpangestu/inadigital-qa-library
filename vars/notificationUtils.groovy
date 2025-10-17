@@ -286,11 +286,6 @@ final class NotificationConfig {
                     'DEV'    : 'EMETERAI_DEV_WEBHOOK_URL',
                     'STAGING': 'EMETERAI_STAGING_WEBHOOK_URL',
                     'PROD'   : 'EMETERAI_PROD_WEBHOOK_URL'
-            ],
-            'digidoc' : [
-                    'DEV'    : 'DIGIDOC_DEV_WEBHOOK_URL',
-                    'STAGING': 'DIGIDOC_STAGING_WEBHOOK_URL',
-                    'PROD'   : 'DIGIDOC_PROD_WEBHOOK_URL'
             ]
             // Add more services that need environment-specific webhooks
     ]
