@@ -123,7 +123,7 @@ def mapTagToSheets(String tagToUse) {
     }
 
     // Fallback: return all sheets when no tag is found in the mapping
-    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'SBU_WEB', 'TELKOMSIGN']
+    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'PERISAI-DIGIDOC', 'TELKOMSIGN', 'MBG']
     echo "📋 Tag '${normalizedTag}' not found in mapping, using fallback sheets: ${fallbackSheets}"
     return fallbackSheets
 }
