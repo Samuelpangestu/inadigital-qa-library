@@ -1,8 +1,8 @@
 #!/usr/bin/env groovy
-
 /**
- * Test Data Management Utilities
+ * Test Data Management Utilities (API, Web, Mobile)
  * Handles Google Sheets integration, test data loading, and tag mapping
+ * Used by Jenkins pipelines for different automation types
  */
 
 // =============================================================================
@@ -12,7 +12,6 @@
 def determineEffectiveTag(String jobName, String defaultTag, def params = null) {
     def jobNameLower = jobName.toLowerCase()
 
-    // Job name based tag determination
     if (jobNameLower.contains('inagov')) return 'inagov'
     if (jobNameLower.contains('inapas')) return 'inapas'
     if (jobNameLower.contains('inaku')) return 'inaku'
@@ -53,7 +52,6 @@ def setupTagMetadata(def env, def params) {
     if (params.USE_CUSTOM_TAG && params.CUSTOM_TAG?.trim()) {
         tagToUse = params.CUSTOM_TAG.trim()
         tagSource = "CUSTOM_TAG"
-
         if (tagToUse.startsWith('@')) {
             tagToUse = tagToUse.substring(1)
         }
@@ -69,7 +67,6 @@ def setupTagMetadata(def env, def params) {
 
     env.EFFECTIVE_QA_SERVICE = tagToUse
     env.TAG_SOURCE = tagSource
-
     return [tag: tagToUse, source: tagSource]
 }
 
@@ -126,7 +123,7 @@ def mapTagToSheets(String tagToUse) {
     }
 
     // Fallback: return all sheets when no tag is found in the mapping
-    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'SBU_WEB', 'TELKOMSIGN']
+    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'PERISAI-DIGIDOC', 'TELKOMSIGN', 'MBG']
     echo "📋 Tag '${normalizedTag}' not found in mapping, using fallback sheets: ${fallbackSheets}"
     return fallbackSheets
 }
@@ -150,7 +147,7 @@ def getEffectiveSheetNames(String tagToUse, String overrideSheetName = null) {
 }
 
 // =============================================================================
-// GOOGLE SHEETS DATA LOADING
+// LOAD TEST DATA FROM SHEETS
 // =============================================================================
 
 /**
@@ -158,140 +155,77 @@ def getEffectiveSheetNames(String tagToUse, String overrideSheetName = null) {
  * @param sheetNames List of sheet names to load data from
  * @param spreadsheetId Google Sheets spreadsheet ID (optional, uses default from TestData class)
  */
-def loadTestDataFromSheets(List<String> sheetNames, String spreadsheetId = null) {
+def loadTestDataFromSheets(List<String> sheetNames, String spreadsheetId, String automationType) {
     echo "📊 Loading test data from ${sheetNames.size()} sheet(s): ${sheetNames.join(', ')}"
+    echo "🔧 Automation Type: ${automationType.toUpperCase()}"
 
     for (String sheetName : sheetNames) {
         echo "📄 Processing sheet: ${sheetName}"
 
         try {
-            // Clear any existing SHEET environment variable and set the new one
             sh """
+                #!/bin/bash
+                set -e
                 sed -i '/^SHEET=/d' .env || true
                 echo "SHEET=${sheetName}" >> .env
-                
-                # Set spreadsheet ID if provided
-                ${spreadsheetId ? "sed -i '/^SPREADSHEET_ID=/d' .env || true" : ""}
-                ${spreadsheetId ? "echo 'SPREADSHEET_ID=${spreadsheetId}' >> .env" : ""}
-                
-                # Load test data using Maven
-                export MAVEN_OPTS="-Xmx1024m -Dfile.encoding=UTF-8"
-                mvn exec:java -Dexec.mainClass="inadigital.test_data.TestData" -q
+
+                if [ -n "${spreadsheetId}" ]; then
+                    sed -i '/^SPREADSHEET_ID=/d' .env || true
+                    echo "SPREADSHEET_ID=${spreadsheetId}" >> .env
+                fi
             """
 
-            echo "✅ Successfully loaded data from sheet: ${sheetName}"
+            switch (automationType.toLowerCase()) {
+                case 'api':
+                    echo "🔌 Loading test data for API automation"
+                    sh """
+                        #!/bin/bash
+                        set -e
+                        export MAVEN_OPTS="-Xmx1024m -Dfile.encoding=UTF-8"
+                        mvn exec:java -Dexec.mainClass='inadigital.test_data.TestData' -q
+                    """
+                    break
+
+                case 'web':
+                    echo "🌐 Syncing environment for Playwright web automation"
+                    sh """
+                        #!/bin/bash
+                        set -e
+                        if command -v pnpm &> /dev/null; then
+                            pnpm sync:env
+                        else
+                            echo "⚠️ pnpm not found, using npm fallback"
+                            npm run sync:env
+                        fi
+                    """
+                    break
+
+                case 'mobile':
+                    echo "📱 Loading test data for Mobile automation"
+                    sh """
+                        #!/bin/bash
+                        set -e
+                        if [ -f "gradlew" ]; then
+                            ./gradlew prepareTestData
+                        elif command -v npm &> /dev/null; then
+                            npm run sync:env
+                        else
+                            echo "⚠️ No supported mobile build tool found"
+                        fi
+                    """
+                    break
+
+                default:
+                    echo "⚠️ Unknown automation type: ${automationType}. Skipping..."
+                    break
+            }
 
         } catch (Exception e) {
-            echo "⚠️ Warning: Failed to load data from sheet '${sheetName}': ${e.getMessage()}"
-            // Continue with other sheets instead of failing completely
+            echo "⚠️ Failed to load data from sheet '${sheetName}': ${e.getMessage()}"
         }
     }
 
-    echo "📊 All test data loading completed"
-}
-
-/**
- * Simplified method for backward compatibility
- * Loads test data based on the determined tag
- */
-def loadTestDataForService(String serviceTag) {
-    def sheetNames = mapTagToSheets(serviceTag)
-    loadTestDataFromSheets(sheetNames)
-}
-
-/**
- * Setup Google Sheets configuration for API tests
- */
-def setupGoogleSheetsForApi(def params, def env) {
-    def tagResult = setupTagMetadata(env, params)
-    def effectiveSheetNames = getEffectiveSheetNames(tagResult.tag, params.SHEET_NAME)
-    env.EFFECTIVE_SHEET_NAMES = effectiveSheetNames.join(',')
-
-    def displayTag = params.USE_CUSTOM_TAG ? "@${tagResult.tag}" : params.QA_SERVICE
-    currentBuild.description = "Tag: @${tagResult.tag} (${tagResult.source}) | Sheets: ${effectiveSheetNames.join(', ')}"
-
-    echo "🏷️ Tag: @${tagResult.tag} (${tagResult.source}) | Sheets: ${effectiveSheetNames.join(', ')}"
-
-    return effectiveSheetNames
-}
-
-// =============================================================================
-// ENVIRONMENT SETUP
-// =============================================================================
-
-/**
- * Setup environment with Google Sheets configuration
- */
-def setupEnvironmentWithSheets(String credentialsId, def params) {
-    withCredentials([
-            file(credentialsId: credentialsId, variable: 'SECRET_FILE'),
-            file(credentialsId: "qa-google-service-account-key", variable: 'SERVICE_ACCOUNT_KEY')
-    ]) {
-        sh '''
-            # Copy base .env file
-            if [ -f "$SECRET_FILE" ]; then
-                cat "$SECRET_FILE" > .env
-            else
-                touch .env
-            fi
-
-            # Add Google Sheets configuration
-            echo "" >> .env
-            echo "SPREADSHEET_ID=${SPREADSHEET_ID}" >> .env
-
-            # Setup Google Service Account key
-            if [ -f "$SERVICE_ACCOUNT_KEY" ]; then
-                cat "$SERVICE_ACCOUNT_KEY" > key.json
-                chmod 600 key.json
-            else
-                echo "ERROR: SERVICE_ACCOUNT_KEY file not found"
-                exit 1
-            fi
-        '''
-    }
-}
-
-/**
- * Load test data for the current pipeline
- */
-def loadCurrentPipelineData(def env) {
-    def sheetsToProcess = env.EFFECTIVE_SHEET_NAMES.split(',').collect { it.trim() }
-    loadTestDataFromSheets(sheetsToProcess, env.SPREADSHEET_ID)
-}
-
-// =============================================================================
-// WEB TEST DATA HANDLING
-// =============================================================================
-
-/**
- * Setup test data for web tests (simpler approach)
- */
-def setupWebTestData(String tagToUse) {
-    echo "📊 Setting up web test data for tag: ${tagToUse}"
-
-    // Web tests typically don't need Google Sheets data loading
-    // but we can extend this if needed
-
-    def relevantSheets = mapTagToSheets(tagToUse)
-    echo "📋 Relevant sheets for web tests: ${relevantSheets.join(', ')}"
-
-    return relevantSheets
-}
-
-// =============================================================================
-// MOBILE TEST DATA HANDLING
-// =============================================================================
-
-/**
- * Setup test data for mobile tests
- */
-def setupMobileTestData(String tagToUse) {
-    echo "📱 Setting up mobile test data for tag: ${tagToUse}"
-
-    def relevantSheets = mapTagToSheets(tagToUse)
-    echo "📋 Relevant sheets for mobile tests: ${relevantSheets.join(', ')}"
-
-    return relevantSheets
+    echo "✅ All test data loading completed for ${automationType.toUpperCase()} automation"
 }
 
 return this
