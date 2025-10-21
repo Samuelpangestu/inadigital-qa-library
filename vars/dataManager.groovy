@@ -82,6 +82,7 @@ def setupTagMetadata(def env, def params) {
  */
 def mapTagToSheets(String tagToUse) {
     def sheetMapping = [
+            'web-peruriid'         : ['WEB-PERURIID'],
             'peruriid'             : ['PERURIID'],
             'external-iam'         : ['PERURIID'],
             'internal-iam'         : ['PERURIID'],
@@ -106,7 +107,6 @@ def mapTagToSheets(String tagToUse) {
             'smoke'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             'api'                  : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             // Web-specific mappings
-            'web-peruriid'         : ['WEB-PERURIID'],
             'perisai-digidoc'      : ['PERISAI-DIGIDOC'],
             'change-password'      : ['PERURIID'],
             'login-success'        : ['PERURIID'],
