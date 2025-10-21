@@ -106,6 +106,7 @@ def mapTagToSheets(String tagToUse) {
             'smoke'                : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             'api'                  : ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'TELKOMSIGN'],
             // Web-specific mappings
+            'web-peruriid'         : ['WEB-PERURIID'],
             'perisai-digidoc'      : ['PERISAI-DIGIDOC'],
             'change-password'      : ['PERURIID'],
             'login-success'        : ['PERURIID'],
@@ -124,7 +125,7 @@ def mapTagToSheets(String tagToUse) {
     }
 
     // Fallback: return all sheets when no tag is found in the mapping
-    def fallbackSheets = ['PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'PERISAI-DIGIDOC', 'TELKOMSIGN', 'MBG']
+    def fallbackSheets = ['WEB-PERURIID', 'PERURIID', 'SBU', 'INAGOV', 'INAPAS', 'INAKU', 'PERISAI-DIGIDOC', 'TELKOMSIGN', 'MBG']
     echo "📋 Tag '${normalizedTag}' not found in mapping, using fallback sheets: ${fallbackSheets}"
     return fallbackSheets
 }
