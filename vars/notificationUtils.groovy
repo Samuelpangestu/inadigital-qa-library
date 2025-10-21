@@ -316,6 +316,7 @@ final class NotificationConfig {
 
             // PeruriID Services
             'peruriid'             : 'PERURIID_WEBHOOK_URL',
+            'web-peruriid'         : 'PERURIID_WEBHOOK_URL',
             'wizard'               : 'PERURIID_WEBHOOK_URL',
 
             // Telkomsign Services
