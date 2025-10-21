@@ -12,6 +12,7 @@
 def determineEffectiveTag(String jobName, String defaultTag, def params = null) {
     def jobNameLower = jobName.toLowerCase()
 
+    if (jobNameLower.contains('web-peruriid')) return 'web-peruriid'
     if (jobNameLower.contains('inagov')) return 'inagov'
     if (jobNameLower.contains('inapas')) return 'inapas'
     if (jobNameLower.contains('inaku')) return 'inaku'
@@ -29,7 +30,6 @@ def determineEffectiveTag(String jobName, String defaultTag, def params = null) 
     if (jobNameLower.contains('emudhra')) return 'emudhra'
 
     // Web-specific job patterns
-    if (jobNameLower.contains('web-peruriid')) return 'web-peruriid'
     if (jobNameLower.contains('perisai-digidoc')) return 'perisai-digidoc'
     if (jobNameLower.contains('change-password')) return 'change-password'
     if (jobNameLower.contains('login-success')) return 'login-success'
