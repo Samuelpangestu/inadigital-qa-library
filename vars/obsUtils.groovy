@@ -22,7 +22,7 @@ def setupCredentials(String credentialsId) {
             echo "🔑 Configuring OBS credentials..."
             /usr/local/bin/obsutil config -i="$OBS_ACCESS_KEY" \\
                                        -k="$OBS_ACCESS_SECRET" \\
-                                       -e=obs.ap-southeast-3.myhuaweicloud.com
+                                       -e=obs.ap-southeast-4.myhuaweicloud.com
         '''
         echo "✅ OBSUtil configuration completed!"
     }
