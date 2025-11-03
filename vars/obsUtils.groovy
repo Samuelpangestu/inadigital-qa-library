@@ -20,7 +20,7 @@ def setupCredentials(String credentialsId) {
     ]) {
         sh '''
             echo "🔑 Configuring OBS credentials..."
-            /var/lib/jenkins/obsutil config -i="$OBS_ACCESS_KEY" \\
+            /usr/local/bin/obsutil config -i="$OBS_ACCESS_KEY" \\
                                        -k="$OBS_ACCESS_SECRET" \\
                                        -e=obs.ap-southeast-3.myhuaweicloud.com
         '''
@@ -62,7 +62,7 @@ def uploadFolder(String localFolder, String remotePath, String endpoint) {
     try {
         sh """
             echo "📤 Uploading ${localFolder} to ${remotePath} on ${endpoint}..."
-            /var/lib/jenkins/obsutil cp -r -f ${localFolder} ${remotePath}
+            /usr/local/bin/obsutil cp -r -f ${localFolder} ${remotePath}
         """
         echo "✅ Upload completed successfully"
         return true
@@ -81,7 +81,7 @@ def uploadFile(String localFile, String remotePath, String endpoint) {
     try {
         sh """
             echo "📤 Uploading file ${localFile} to ${remotePath} on ${endpoint}..."
-            /var/lib/jenkins/obsutil cp ${localFile} ${remotePath}
+            /usr/local/bin/obsutil cp ${localFile} ${remotePath}
         """
         echo "✅ File upload completed successfully"
         return true
@@ -99,7 +99,7 @@ def verifyUpload(String remotePath, String endpoint) {
     try {
         sh """
             echo "🔍 Verifying upload at ${remotePath} on ${endpoint}..."
-            /var/lib/jenkins/obsutil ls ${remotePath}
+            /usr/local/bin/obsutil ls ${remotePath}
         """
         echo "✅ Upload verification completed successfully"
         return true
@@ -112,7 +112,7 @@ def verifyUpload(String remotePath, String endpoint) {
 def checkRemotePathExists(String remotePath, String endpoint) {
     try {
         def result = sh(
-                script: "/var/lib/jenkins/obsutil ls ${remotePath}",
+                script: "/usr/local/bin/obsutil ls ${remotePath}",
                 returnStatus: true
         )
         return result == 0
@@ -151,7 +151,7 @@ def getReportUrl(String baseUrl, String serviceForUrl, String serviceNameForUrl,
 def listRemoteContents(String remotePath, String endpoint) {
     try {
         def output = sh(
-                script: "/var/lib/jenkins/obsutil ls ${remotePath}",
+                script: "/usr/local/bin/obsutil ls ${remotePath}",
                 returnStdout: true
         ).trim()
 
